@@ -1,0 +1,10 @@
+{
+    "train_batch_size": 64,
+    "test_batch_size": 64,
+    "num_workers": 4,
+    "learning_rate": 1e-4,
+    "num_epochs": 100,
+    "save_summary_steps": 100,
+    "wide_of_layers": [784, 30, 10],
+    "act_fn_name": "tanh"
+}
