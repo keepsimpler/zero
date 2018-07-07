@@ -7,7 +7,7 @@ from tqdm import tqdm # 显示进度条
 
 import utils
 
-def train(model, optimizer, loss_fn, dataloader, metrics, params):
+def train(model, optimizer, loss_fn, dataloader, accuracy_fn, params):
     """Train the model on train data batch-by-batch
 
     Args:
@@ -15,7 +15,7 @@ def train(model, optimizer, loss_fn, dataloader, metrics, params):
         optimizer: (torch.optim) optimizer for parameters of model
         loss_fn: a function that takes batch_output and batch_labels and computes the loss for the batch
         dataloader: (DataLoader) a torch.utils.data.DataLoader object that fetches training data
-        metrics: (dict) a dictionary of functions that compute a metric using the output and labels of each batch
+        accuracy_fn: a function that computes accuracy using the output and labels of each batch
         params: (Params) hyperparameters
     """
 
@@ -23,8 +23,8 @@ def train(model, optimizer, loss_fn, dataloader, metrics, params):
     model.train()
 
     # summary for current training loop and a running average object for loss
-    summ = []
     loss_avg = utils.RunningAverage()
+    accuracy_avg = utils.RunningAverage()
 
     # Use tqdm for progress bar
     with tqdm(total=len(dataloader)) as t:
@@ -36,6 +36,7 @@ def train(model, optimizer, loss_fn, dataloader, metrics, params):
             # compute model output and loss
             output_batch = model(train_batch)
             loss = loss_fn(output_batch, labels_batch)
+            accuracy = accuracy_fn(output_batch, labels_batch)
 
             # clear previous gradients, compute gradients of all tensors wrt loss
             optimizer.zero_grad()
@@ -44,26 +45,17 @@ def train(model, optimizer, loss_fn, dataloader, metrics, params):
             # performs updates using calculated gradients
             optimizer.step()
 
-            # Evaluate summaries only once in a while
-            if i % params.save_summary_steps == 0:
-                # extract data from torch tensors, move to cpu, convert to numpy arrays
-                output_batch = output_batch.data.cpu().numpy()
-                labels_batch = labels_batch.data.cpu().numpy()
-
-                # compute all metrics on this batch
-                summary_batch = {metric:metrics[metric](output_batch, labels_batch)
-                                 for metric in metrics}
-                summary_batch['loss'] = loss.data.item() #loss.data[0]
-                summ.append(summary_batch)
-
             # update the average loss
             loss_avg.update(loss.data.item())  # loss.data[0]
+            accuracy_avg.update(accuracy)
 
-            t.set_postfix(loss='{:05.3f}'.format(loss_avg()))
+            t.set_postfix(loss='{:05.3f}'.format(loss_avg()),
+            accuracy='{:05.3f}'.format(accuracy_avg()))
             t.update()
 
-    # compute mean of all metrics in summary
-    metrics_mean = {metric:np.mean([x[metric] for x in summ]) for metric in summ[0]}
-    metrics_string = " ; ".join("{}: {:05.3f}".format(k, v) for k, v in metrics_mean.items())
+    metrics_string = "accuracy={:05.3f},loss={:05.3f}".format(accuracy_avg(), loss_avg())
     logging.info("- Train metrics: " + metrics_string)
-    return metrics_mean
+    params.accuracy_avg = accuracy_avg()
+    params.loss_avg = loss_avg()
+    params.type = 'train'
+    return params

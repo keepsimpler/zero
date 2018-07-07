@@ -18,23 +18,23 @@ parser.add_argument('--restore_file', default='best', help="name of the file in 
                      containing weights to load")
 
 
-def evaluate(model, loss_fn, dataloader, metrics, params):
-    """Evaluate the model on `num_steps` batches.
+def evaluate(model, loss_fn, dataloader, accuracy_fn, params):
+    """Evaluate the model on test data batch by batch.
 
     Args:
         model: (torch.nn.Module) the neural network
         loss_fn: a function that takes batch_output and batch_labels and computes the loss for the batch
         dataloader: (DataLoader) a torch.utils.data.DataLoader object that fetches data
-        metrics: (dict) a dictionary of functions that compute a metric using the output and labels of each batch
+        accuracy_fn: a function that computes accuracy using the output and labels of each batch
         params: (Params) hyperparameters
-        num_steps: (int) number of batches to train on, each of size params.batch_size
     """
 
     # set model to evaluation mode
     model.eval()
 
-    # summary for current eval loop
-    summ = []
+    # summary for current training loop and a running average object for loss
+    loss_avg = utils.RunningAverage()
+    accuracy_avg = utils.RunningAverage()
 
     # compute metrics over the dataset
     for data_batch, labels_batch in dataloader:
@@ -46,22 +46,18 @@ def evaluate(model, loss_fn, dataloader, metrics, params):
         # compute model output
         output_batch = model(data_batch)
         loss = loss_fn(output_batch, labels_batch)
+        accuracy = accuracy_fn(output_batch, labels_batch)
 
-        # extract data from torch Variable, move to cpu, convert to numpy arrays
-        output_batch = output_batch.data.cpu().numpy()
-        labels_batch = labels_batch.data.cpu().numpy()
+        # update the average loss
+        loss_avg.update(loss.data.item())  # loss.data[0]
+        accuracy_avg.update(accuracy)
 
-        # compute all metrics on this batch
-        summary_batch = {metric: metrics[metric](output_batch, labels_batch)
-                         for metric in metrics}
-        summary_batch['loss'] = loss.data.item()  #loss.data[0]
-        summ.append(summary_batch)
-
-    # compute mean of all metrics in summary
-    metrics_mean = {metric:np.mean([x[metric] for x in summ]) for metric in summ[0]} 
-    metrics_string = " ; ".join("{}: {:05.3f}".format(k, v) for k, v in metrics_mean.items())
-    logging.info("- Eval metrics : " + metrics_string)
-    return metrics_mean
+    metrics_string = "loss={:05.3f},accuracy={:05.3f}".format(loss_avg(), accuracy_avg())
+    logging.info("- Evaluate metrics: " + metrics_string)
+    params.accuracy_avg = accuracy_avg()
+    params.loss_avg = loss_avg()
+    params.type = 'evaluate'
+    return params
 
 
 if __name__ == '__main__':
@@ -70,7 +66,7 @@ if __name__ == '__main__':
     """
     # Load the parameters
     args = parser.parse_args()
-    json_path = os.path.join(args.runs_dir, 'params.json')
+    json_path = os.path.join('.', 'params.json')
     assert os.path.isfile(json_path), "No json configuration file found at {}".format(json_path)
     params = utils.Params(json_path)
 
@@ -97,7 +93,7 @@ if __name__ == '__main__':
     model = net.Net(params).cuda() if params.cuda else net.Net(params)
     
     loss_fn = net.loss_fn
-    metrics = net.metrics
+    accuracy_fn = net.accuracy_fn
     
     logging.info("Starting evaluation")
 
@@ -105,6 +101,6 @@ if __name__ == '__main__':
     utils.load_checkpoint(os.path.join(args.runs_dir, args.restore_file + '.pth.tar'), model)
 
     # Evaluate
-    test_metrics = evaluate(model, loss_fn, test_dl, metrics, params)
+    test_metrics = evaluate(model, loss_fn, test_dl, accuracy_fn, params)
     save_path = os.path.join(args.runs_dir, "metrics_test_{}.json".format(args.restore_file))
     utils.save_dict_to_json(test_metrics, save_path)

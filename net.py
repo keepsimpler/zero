@@ -1,7 +1,7 @@
 
 """
-定义网络，误差函数 和 测量
-Defines the neural network, loss function and metrics
+定义网络，误差函数 和 测量函数
+Defines the neural network, loss function and accuracy function
 """
 
 import numpy as np
@@ -27,6 +27,9 @@ class Net(nn.Module):
         """
         super(Net, self).__init__()
         wide_of_layers = params.wide_of_layers # 每层的节点数
+        # 参数中是由'-'分割的层节点数，例如，'784-30-10'
+        # 这里要转换为整数列表，例如，[784,30,10]
+        wide_of_layers = [int(x) for x in wide_of_layers.split('-')]
         act_fn_name = params.act_fn_name # 激活函数名称，函数来自于torch.nn.functional
         self.act_fn = getattr(F, act_fn_name) # 根据激活函数名称获得激活函数实例
 
@@ -55,45 +58,21 @@ class Net(nn.Module):
         # since it is numerically more stable)
         return F.log_softmax(s, dim=1)
 
+# 误差函数
+loss_fn = F.nll_loss
 
-#loss_fn = F.nll_loss
-def loss_fn(outputs, labels):
-    """
-    Compute the cross entropy loss given outputs and labels.
-
-    Args:
-        outputs: (Tensor) dimension batch_size x 10 - output of the model
-        labels: (Tensor) dimension batch_size, where each element is a value in 
-        [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-
-    Returns:
-        loss (Tensor): cross entropy loss for all images in the batch
-
-    Note: you may use a standard loss function from http://pytorch.org/docs/master/nn.html#loss-functions. This example
-          demonstrates how you can easily define a custom loss function.
-    """
-    num_examples = outputs.size()[0]
-    return -torch.sum(outputs[range(num_examples), labels])/num_examples
-
-
-def accuracy(outputs, labels):
+# 测量函数
+def accuracy_fn(outputs, labels):
     """
     Compute the accuracy, given the outputs and labels for all images.
 
     Args:
-        outputs: (np.ndarray) dimension batch_size x 10 - log softmax output of the model
-        labels: (np.ndarray) dimension batch_size, where each element is a value in 
+        outputs: (Tensor) dimension batch_size x 10 - log softmax output of the model
+        labels: (Tensor) dimension batch_size, where each element is a value in 
         [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 
     Returns: (float) accuracy in [0,1]
     """
-    outputs = np.argmax(outputs, axis=1)
-    return np.sum(outputs==labels)/float(labels.size)
+    outputs_labels = outputs.max(dim=1)[1]
+    return sum(outputs_labels == labels).item() / len(labels)
 
-
-# maintain all metrics required in this dictionary- 
-# these are used in the training and evaluation loops
-metrics = {
-    'accuracy': accuracy,
-    # could add more metrics such as accuracy for each token type
-}

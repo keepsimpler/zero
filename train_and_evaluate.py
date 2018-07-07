@@ -1,6 +1,7 @@
 import logging # 记录日志
 import os
 
+import pandas as pd
 import numpy as np
 import cv2 # 为了能正确导入torch,见 https://github.com/pytorch/pytorch/issues/643
 import torch
@@ -12,8 +13,7 @@ import utils
 from train import train
 from evaluate import evaluate
 
-def train_and_evaluate(model, train_dataloader, val_dataloader, optimizer, loss_fn, metrics, params, runs_dir,
-                       restore_file=None):
+def train_and_evaluate(model, train_dataloader, val_dataloader, optimizer, loss_fn, accuracy_fn, params, runs_dir):
     """Train the model and evaluate every epoch.
 
     Args:
@@ -22,35 +22,37 @@ def train_and_evaluate(model, train_dataloader, val_dataloader, optimizer, loss_
         val_dataloader: (DataLoader) a torch.utils.data.DataLoader object that fetches validation data
         optimizer: (torch.optim) optimizer for parameters of model
         loss_fn: a function that takes batch_output and batch_labels and computes the loss for the batch
-        metrics: (dict) a dictionary of functions that compute a metric using the output and labels of each batch
+        accuracy_fn: a function that computes accuracy using the output and labels of each batch
         params: (Params) hyperparameters
         runs_dir: (string) directory containing config, weights and log
-        restore_file: (string) optional- name of file to restore from (without its extension .pth.tar)
     """
-    # reload weights from restore_file if specified
-    if restore_file is not None:
-        restore_path = os.path.join(runs_dir, restore_file + '.pth.tar')
-        logging.info("Restoring parameters from {}".format(restore_path))
-        utils.load_checkpoint(restore_path, model, optimizer)
 
     best_val_acc = 0.0
     writer = SummaryWriter(runs_dir)
+    stats = pd.DataFrame()
+
 
     for epoch in range(params.num_epochs):
         # Run one epoch
         logging.info("Epoch {}/{}".format(epoch + 1, params.num_epochs))
 
         # compute number of batches in one epoch (one full pass over the training set)
-        train_metrics = train(model, optimizer, loss_fn, train_dataloader, metrics, params)
+        train_metrics = train(model, optimizer, loss_fn, train_dataloader, accuracy_fn, params)
+
+        tmp = pd.DataFrame(train_metrics.dict, index=range(1))
+        stats = stats.append(tmp, ignore_index=True)
 
         # Evaluate for one epoch on validation set
-        val_metrics = evaluate(model, loss_fn, val_dataloader, metrics, params)
+        val_metrics = evaluate(model, loss_fn, val_dataloader, accuracy_fn, params)
+
+        tmp = pd.DataFrame(val_metrics.dict, index=range(1))
+        stats = stats.append(tmp, ignore_index=True)
 
         # 存储evaluate/accuracy, evaluate/loss, train/accuracy, train/loss
-        for tag, value in val_metrics.items():
-            writer.add_scalar('evaluate/'+tag, value, epoch)
-        for tag, value in train_metrics.items():
-            writer.add_scalar('train/'+tag, value, epoch)
+        #for tag, value in val_metrics.items():
+        #    writer.add_scalar('evaluate/'+tag, value, epoch)
+        #for tag, value in train_metrics.items():
+        #    writer.add_scalar('train/'+tag, value, epoch)
 
         # 存储参数和其grad的分布
         for tag, value in model.named_parameters():
@@ -59,23 +61,13 @@ def train_and_evaluate(model, train_dataloader, val_dataloader, optimizer, loss_
             writer.add_histogram(tag+'/grad', value.grad.data.cpu().numpy(), epoch)
             writer.add_scalar(tag+'/grad/mean', value.grad.data.mean(), epoch)
 
-        # Save train and val metrics in a json file in the model directory
-        # train_json_path = os.path.join(runs_dir, str(epoch)+".metrics_train.json")
-        # utils.save_dict_to_json(train_metrics, train_json_path)
-        # val_json_path = os.path.join(runs_dir, str(epoch)+".metrics_val.json")
-        # utils.save_dict_to_json(val_metrics, val_json_path)
-
- 
-        val_acc = val_metrics['accuracy']
+        val_acc = val_metrics.accuracy_avg
         is_best = val_acc>=best_val_acc
         # If best_eval, best_save_path
         if is_best:
             logging.info("- Found new best accuracy")
             best_val_acc = val_acc
 
-            # Save best val metrics in a json file in the model directory
-            best_json_path = os.path.join(runs_dir, "best.metrics_val.json")
-            utils.save_dict_to_json(val_metrics, best_json_path)
             # Save weights
             utils.save_checkpoint({'epoch': epoch + 1,
                                 'state_dict': model.state_dict(),
@@ -83,4 +75,5 @@ def train_and_evaluate(model, train_dataloader, val_dataloader, optimizer, loss_
                                 is_best=is_best,
                                 checkpoint=runs_dir,
                                 epoch = epoch)
-
+    stats.to_csv(os.path.join(runs_dir, 'stats.csv'), header=True)
+    
