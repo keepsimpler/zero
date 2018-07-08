@@ -73,3 +73,5 @@ if __name__ == '__main__':
     # Train the model
     logging.info("Starting training for {} epoch(s)".format(params.num_epochs))
     train_and_evaluate(model, train_dl, val_dl, optimizer, loss_fn, accuracy_fn, params, args.runs_dir)
+    # print(params.dict) 对象都是引用，只有一个副本！！
+    

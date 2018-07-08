@@ -52,11 +52,10 @@ def evaluate(model, loss_fn, dataloader, accuracy_fn, params):
         loss_avg.update(loss.data.item())  # loss.data[0]
         accuracy_avg.update(accuracy)
 
-    metrics_string = "loss={:05.3f},accuracy={:05.3f}".format(loss_avg(), accuracy_avg())
+    metrics_string = "accuracy={:05.3f},loss={:05.3f}".format(accuracy_avg(), loss_avg())
     logging.info("- Evaluate metrics: " + metrics_string)
-    params.accuracy_avg = accuracy_avg()
-    params.loss_avg = loss_avg()
-    params.type = 'evaluate'
+    params.evaluate_accuracy_avg = accuracy_avg()
+    params.evaluate_loss_avg = loss_avg()
     return params
 
 

@@ -7,7 +7,6 @@ import cv2 # 为了能正确导入torch,见 https://github.com/pytorch/pytorch/i
 import torch
 import torch.optim as optim
 from tqdm import tqdm # 显示进度条
-from tensorboardX import SummaryWriter # 记录训练效果
 
 import utils
 from train import train
@@ -28,7 +27,6 @@ def train_and_evaluate(model, train_dataloader, val_dataloader, optimizer, loss_
     """
 
     best_val_acc = 0.0
-    writer = SummaryWriter(runs_dir)
     stats = pd.DataFrame()
 
 
@@ -39,29 +37,19 @@ def train_and_evaluate(model, train_dataloader, val_dataloader, optimizer, loss_
         # compute number of batches in one epoch (one full pass over the training set)
         train_metrics = train(model, optimizer, loss_fn, train_dataloader, accuracy_fn, params)
 
-        tmp = pd.DataFrame(train_metrics.dict, index=range(1))
-        stats = stats.append(tmp, ignore_index=True)
-
         # Evaluate for one epoch on validation set
         val_metrics = evaluate(model, loss_fn, val_dataloader, accuracy_fn, params)
 
-        tmp = pd.DataFrame(val_metrics.dict, index=range(1))
-        stats = stats.append(tmp, ignore_index=True)
-
-        # 存储evaluate/accuracy, evaluate/loss, train/accuracy, train/loss
-        #for tag, value in val_metrics.items():
-        #    writer.add_scalar('evaluate/'+tag, value, epoch)
-        #for tag, value in train_metrics.items():
-        #    writer.add_scalar('train/'+tag, value, epoch)
-
         # 存储参数和其grad的分布
         for tag, value in model.named_parameters():
-            tag = tag.replace('.', '/')
-            writer.add_histogram(tag, value.data.cpu().numpy(), epoch, bins='auto')
-            writer.add_histogram(tag+'/grad', value.grad.data.cpu().numpy(), epoch)
-            writer.add_scalar(tag+'/grad/mean', value.grad.data.mean(), epoch)
+            params.dict[tag+'.mean'] = value.data.mean().cpu().item()
+            params.dict[tag+'.grad.mean'] = value.grad.data.mean().cpu().item()
+ 
+        params.dict['epoch'] = epoch
+        tmp = pd.DataFrame(params.dict, index=range(1), columns=params.dict.keys())
+        stats = stats.append(tmp, ignore_index=True)
 
-        val_acc = val_metrics.accuracy_avg
+        val_acc = params.evaluate_accuracy_avg
         is_best = val_acc>=best_val_acc
         # If best_eval, best_save_path
         if is_best:
@@ -75,5 +63,6 @@ def train_and_evaluate(model, train_dataloader, val_dataloader, optimizer, loss_
                                 is_best=is_best,
                                 checkpoint=runs_dir,
                                 epoch = epoch)
-    stats.to_csv(os.path.join(runs_dir, 'stats.csv'), header=True)
+    
+    stats.to_csv(os.path.join(runs_dir, 'stats.csv'), index=False)
     
