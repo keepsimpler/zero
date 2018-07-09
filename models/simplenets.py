@@ -9,8 +9,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
-class Net(nn.Module):
+class LinearContainer(nn.Module):
     """
     PyTorch中定义网络的标准方式。在 __init__ 函数中选择网络的各层。
     然后，在 forward 函数中依次将各层作用于输入数据。
@@ -25,7 +24,7 @@ class Net(nn.Module):
                 wide_of_layers 
                 act_fn_name
         """
-        super(Net, self).__init__()
+        super(LinearContainer, self).__init__()
         wide_of_layers = params.wide_of_layers # 每层的节点数
         # 参数中是由'-'分割的层节点数，例如，'784-30-10'
         # 这里要转换为整数列表，例如，[784,30,10]
@@ -57,22 +56,4 @@ class Net(nn.Module):
         # apply log softmax on each image's output (this is recommended over applying softmax
         # since it is numerically more stable)
         return F.log_softmax(s, dim=1)
-
-# 误差函数
-loss_fn = F.nll_loss
-
-# 测量函数
-def accuracy_fn(outputs, labels):
-    """
-    Compute the accuracy, given the outputs and labels for all images.
-
-    Args:
-        outputs: (Tensor) dimension batch_size x 10 - log softmax output of the model
-        labels: (Tensor) dimension batch_size, where each element is a value in 
-        [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-
-    Returns: (float) accuracy in [0,1]
-    """
-    outputs_labels = outputs.max(dim=1)[1]
-    return sum(outputs_labels == labels).item() / len(labels)
 

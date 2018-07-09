@@ -3,16 +3,18 @@
 import argparse
 import logging
 import os
+from tqdm import tqdm # 显示进度条
 
 import numpy as np
 import cv2 # 为了能正确导入torch,见 https://github.com/pytorch/pytorch/issues/643
 import torch
 import torch.optim as optim
-from tqdm import tqdm # 显示进度条
+import torch.nn.functional as F
 
 import utils
-import net as net # 从model子目录导入网络模型
-import data_loader as data_loader # 从model子目录导入数据loader
+import models # 从models子目录导入网络模型
+import models.functional as F2 # 自定义的函数
+import data_loader as data_loader # 导入数据loader
 from train_and_evaluate import train_and_evaluate
 
 parser = argparse.ArgumentParser()
@@ -33,7 +35,6 @@ if __name__ == '__main__':
     params = utils.Params(json_path)
 
     # 解析 Params
-
 
     # use GPU if available
     params.cuda = torch.cuda.is_available()
@@ -56,8 +57,13 @@ if __name__ == '__main__':
     logging.info("- done.")
 
     # Define the model and optimizer
-    model = net.Net(params).cuda() if params.cuda else net.Net(params)
+    #model = models.LinearContainer(params).cuda() if params.cuda else models.LinearContainer(params)
+    model = models.LinkContainer(params).cuda() if params.cuda else models.LinearContainer(params)
     optimizer = optim.Adam(model.parameters(), lr=params.learning_rate)
+
+    # fetch loss function and accuracy function
+    loss_fn = F.nll_loss
+    accuracy_fn = F2.accuracy_fn
 
     # restore pretrained model here
     # reload weights from restore_file if specified
@@ -65,10 +71,6 @@ if __name__ == '__main__':
         restore_path = os.path.join(args.runs_dir, args.restore_file + '.pth.tar')
         logging.info("Restoring parameters from {}".format(restore_path))
         utils.load_checkpoint(restore_path, model, optimizer)
-
-    # fetch loss function and accuracy function
-    loss_fn = net.loss_fn
-    accuracy_fn = net.accuracy_fn
 
     # Train the model
     logging.info("Starting training for {} epoch(s)".format(params.num_epochs))
