@@ -1,4 +1,24 @@
 import torch
+import torch.nn.functional as F
+
+def lv1(input, weight, bias=None):
+    residential = F.linear(input, weight, bias) * input
+    #output = input + residential
+    return residential
+
+def adaptive_step(input, stepwise):
+    r"""
+    input * stepwise, element-wise function
+    Shape:
+        - input: :math:`(N, *, in\_features), `*`代表任意多的附加维度
+        - stepwise: :math:`(in\_features)`
+        -output: math:`(N, *, in\_features)
+
+    Note:
+        输出维度＝＝输入维度
+    """
+    output = input * stepwise
+    return output
 
 def link(input, act_fn, weight, bias=None):
     r"""

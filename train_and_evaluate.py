@@ -42,8 +42,8 @@ def train_and_evaluate(model, train_dataloader, val_dataloader, optimizer, loss_
 
         # 存储参数和其grad的分布
         for tag, value in model.named_parameters():
-            params.dict[tag+'.mean'] = value.data.mean().cpu().item()
-            params.dict[tag+'.grad.mean'] = value.grad.data.mean().cpu().item()
+            params.dict[tag+'.norm'] = value.data.norm().cpu().item()
+            params.dict[tag+'.grad.norm'] = value.grad.data.norm().cpu().item()
  
         params.dict['epoch'] = epoch
         tmp = pd.DataFrame(params.dict, index=range(1), columns=params.dict.keys())
@@ -64,5 +64,5 @@ def train_and_evaluate(model, train_dataloader, val_dataloader, optimizer, loss_
                                 checkpoint=runs_dir,
                                 epoch = epoch)
     
-    stats.to_csv(os.path.join(runs_dir, 'stats.csv'), index=False)
-    
+    # stats.to_csv(os.path.join(runs_dir, 'stats.csv'), index=False)
+    return stats

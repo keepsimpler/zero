@@ -5,6 +5,7 @@ import logging
 import os
 from tqdm import tqdm # 显示进度条
 
+import pandas as pd
 import numpy as np
 import cv2 # 为了能正确导入torch,见 https://github.com/pytorch/pytorch/issues/643
 import torch
@@ -19,7 +20,7 @@ from train_and_evaluate import train_and_evaluate
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--data_dir', default='data/MNIST', help="数据目录Directory containing the dataset")
-parser.add_argument('--runs_dir', default='runs/base_model', help="运行时目录")
+parser.add_argument('--restart', default='False', help="是否重新开始本模型的训练")
 parser.add_argument('--restore_file', default=None,
                     help="Optional, name of the file in --runs_dir containing weights to reload before \
                     training")
@@ -35,16 +36,21 @@ if __name__ == '__main__':
     params = utils.Params(json_path)
 
     # 解析 Params
+    runs_dir = os.path.join('runs/', params.model_name)
+    if not os.path.exists(runs_dir):
+        os.makedirs(runs_dir)
 
     # use GPU if available
     params.cuda = torch.cuda.is_available()
 
     # Set the random seed for reproducible experiments
     torch.manual_seed(230)
-    if params.cuda: torch.cuda.manual_seed(230)
+    if params.cuda:
+        torch.cuda.set_device(params.cuda_device)
+        torch.cuda.manual_seed(230)
 
     # Set the logger
-    utils.set_logger(os.path.join(args.runs_dir, 'train.log'))
+    utils.set_logger(os.path.join(runs_dir, 'train.log'))
  
     # Create the input data pipeline
     logging.info("Loading the datasets...")
@@ -56,10 +62,16 @@ if __name__ == '__main__':
 
     logging.info("- done.")
 
-    # Define the model and optimizer
-    #model = models.LinearContainer(params).cuda() if params.cuda else models.LinearContainer(params)
-    model = models.LinkContainer(params).cuda() if params.cuda else models.LinearContainer(params)
-    optimizer = optim.Adam(model.parameters(), lr=params.learning_rate)
+    model_name = params.model_name # 模型名称，模型来自于models包
+    model_cls = getattr(models, model_name) # 根据模型名称获得模型类
+    model = model_cls(params).cuda() if params.cuda else model_cls(params)
+
+    if params.optimizer_name == 'SGD':
+        optimizer = optim.SGD(model.parameters(), lr=params.learning_rate)
+    elif params.optimizer_name == 'Adam':
+        optimizer = optim.Adam(model.parameters(), lr=params.learning_rate)
+    else:
+        logging.error("- optimizer does not exist.")
 
     # fetch loss function and accuracy function
     loss_fn = F.nll_loss
@@ -68,12 +80,20 @@ if __name__ == '__main__':
     # restore pretrained model here
     # reload weights from restore_file if specified
     if args.restore_file is not None:
-        restore_path = os.path.join(args.runs_dir, args.restore_file + '.pth.tar')
+        restore_path = os.path.join(runs_dir, args.restore_file + '.pth.tar')
         logging.info("Restoring parameters from {}".format(restore_path))
         utils.load_checkpoint(restore_path, model, optimizer)
 
     # Train the model
     logging.info("Starting training for {} epoch(s)".format(params.num_epochs))
-    train_and_evaluate(model, train_dl, val_dl, optimizer, loss_fn, accuracy_fn, params, args.runs_dir)
+    stats = train_and_evaluate(model, train_dl, val_dl, optimizer, loss_fn, accuracy_fn, params, runs_dir)
     # print(params.dict) 对象都是引用，只有一个副本！！
+
+    if args.restart == 'True':
+        with open(os.path.join(runs_dir, 'stats.csv'), 'w') as f:
+            stats.to_csv(f, index=False)
+    elif args.restart == 'False':
+        with open(os.path.join(runs_dir, 'stats.csv'), 'a') as f:
+            stats.to_csv(f, index=False, header=False)
+
     
