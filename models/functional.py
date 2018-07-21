@@ -1,5 +1,16 @@
+import math
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
+import models
+
+def init_weights(m):
+    if type(m) == nn.Linear or type(m) == models.LinkRes:
+        stdv = 1. / math.sqrt(m.weight.data.size(1)) # in_features 大小
+        m.weight.data.uniform_(-stdv, stdv)
+        m.weight.data[m.weight.data > stdv * 0.1] = 0
+        m.weight.data[m.weight.data < - stdv * 0.1] = 0
+        print('zero=', len(m.weight.data[m.weight.data == 0]), m.weight.data.size())
 
 def lv1(input, weight, bias=None):
     residential = F.linear(input, weight, bias) * input
@@ -61,5 +72,6 @@ def accuracy_fn(outputs, labels):
     Returns: (float) accuracy in [0,1]
     """
     outputs_labels = outputs.max(dim=1)[1]
+    #print(outputs_labels, labels)
     return sum(outputs_labels == labels).item() / len(labels)
 

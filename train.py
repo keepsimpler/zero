@@ -1,9 +1,10 @@
 import logging
+from tqdm import tqdm # 显示进度条
+
 import numpy as np
 import cv2 # 为了能正确导入torch,见 https://github.com/pytorch/pytorch/issues/643
 import torch
 import torch.optim as optim
-from tqdm import tqdm # 显示进度条
 
 import utils
 
@@ -27,31 +28,33 @@ def train(model, optimizer, loss_fn, dataloader, accuracy_fn, params):
     accuracy_avg = utils.RunningAverage()
 
     # Use tqdm for progress bar
-    with tqdm(total=len(dataloader)) as t:
-        for i, (train_batch, labels_batch) in enumerate(dataloader):
-            # move to GPU if available
-            if params.cuda:
-                train_batch, labels_batch = train_batch.cuda(async=True), labels_batch.cuda(async=True)
+#    with tqdm(total=len(dataloader)) as t:
+    for i, (train_batch, labels_batch) in enumerate(dataloader):
+        # move to GPU if available
+        if params.cuda:
+            train_batch, labels_batch = train_batch.cuda(), labels_batch.cuda()
 
-            # compute model output and loss
-            output_batch = model(train_batch)
-            loss = loss_fn(output_batch, labels_batch)
-            accuracy = accuracy_fn(output_batch, labels_batch)
+        # compute model output and loss
+        output_batch = model(train_batch)
+        loss = loss_fn(output_batch, labels_batch)
+        accuracy = accuracy_fn(output_batch, labels_batch)
 
-            # clear previous gradients, compute gradients of all tensors wrt loss
-            optimizer.zero_grad()
-            loss.backward()
+        #for tag, value in model.named_parameters():
+        #    logging.info(str(len(value[abs(value) <= 1e-10])) + str(len(value)))
 
-            # performs updates using calculated gradients
-            optimizer.step()
+        # clear previous gradients, compute gradients of all tensors wrt loss
+        optimizer.zero_grad()
+        loss.backward()
 
-            # update the average loss
-            loss_avg.update(loss.data.item())  # loss.data[0]
-            accuracy_avg.update(accuracy)
+        # performs updates using calculated gradients
+        optimizer.step()
 
-            t.set_postfix(loss='{:05.3f}'.format(loss_avg()),
-            accuracy='{:05.3f}'.format(accuracy_avg()))
-            t.update()
+        # update the average loss
+        loss_avg.update(loss.data.item())  # loss.data[0]
+        accuracy_avg.update(accuracy)
+#            t.set_postfix(loss='{:05.3f}'.format(loss_avg()),
+#            accuracy='{:05.3f}'.format(accuracy_avg()))
+#            t.update()
 
     metrics_string = "accuracy={:05.3f},loss={:05.3f}".format(accuracy_avg(), loss_avg())
     logging.info("- Train metrics: " + metrics_string)

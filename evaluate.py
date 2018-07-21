@@ -8,15 +8,8 @@ import numpy as np
 import cv2 # 为了能正确导入torch,见 https://github.com/pytorch/pytorch/issues/643
 import torch
 import utils
-import net as net
+#import net as net
 import data_loader as data_loader
-
-parser = argparse.ArgumentParser()
-parser.add_argument('--data_dir', default='data', help="Directory containing the dataset")
-parser.add_argument('--runs_dir', default='experiments/base_model', help="Directory containing params.json")
-parser.add_argument('--restore_file', default='best', help="name of the file in --runs_dir \
-                     containing weights to load")
-
 
 def evaluate(model, loss_fn, dataloader, accuracy_fn, params):
     """Evaluate the model on test data batch by batch.
@@ -41,7 +34,7 @@ def evaluate(model, loss_fn, dataloader, accuracy_fn, params):
 
         # move to GPU if available
         if params.cuda:
-            data_batch, labels_batch = data_batch.cuda(async=True), labels_batch.cuda(async=True)
+            data_batch, labels_batch = data_batch.cuda(), labels_batch.cuda()
         
         # compute model output
         output_batch = model(data_batch)
@@ -59,47 +52,53 @@ def evaluate(model, loss_fn, dataloader, accuracy_fn, params):
     return params
 
 
-if __name__ == '__main__':
-    """
-        Evaluate the model on the test set.
-    """
-    # Load the parameters
-    args = parser.parse_args()
-    json_path = os.path.join('.', 'params.json')
-    assert os.path.isfile(json_path), "No json configuration file found at {}".format(json_path)
-    params = utils.Params(json_path)
+#parser = argparse.ArgumentParser()
+#arser.add_argument('--data_dir', default='data', help="Directory containing the dataset")
+#parser.add_argument('--runs_dir', default='experiments/base_model', help="Directory containing params.json")
+#parser.add_argument('--restore_file', default='best', help="name of the file in --runs_dir \
+#                     containing weights to load")
 
-    # use GPU if available
-    params.cuda = torch.cuda.is_available()     # use GPU is available
+#if __name__ == '__main__':
+#    """
+#        Evaluate the model on the test set.
+#    """
+#    # Load the parameters
+#    args = parser.parse_args()
+#    json_path = os.path.join('.', 'params.json')
+#    assert os.path.isfile(json_path), "No json configuration file found at {}".format(json_path)
+#    params = utils.Params(json_path)
 
-    # Set the random seed for reproducible experiments
-    torch.manual_seed(230)
-    if params.cuda: torch.cuda.manual_seed(230)
+#    # use GPU if available
+#    params.cuda = torch.cuda.is_available()     # use GPU is available
+
+#    # Set the random seed for reproducible experiments
+#    torch.manual_seed(230)
+#    if params.cuda: torch.cuda.manual_seed(230)
         
-    # Get the logger
-    utils.set_logger(os.path.join(args.runs_dir, 'evaluate.log'))
+#    # Get the logger
+#    utils.set_logger(os.path.join(args.runs_dir, 'evaluate.log'))
 
-    # Create the input data pipeline
-    logging.info("Creating the dataset...")
+#    # Create the input data pipeline
+#    logging.info("Creating the dataset...")
 
-    # fetch dataloaders
-    dataloaders = data_loader.fetch_dataloader(['test'], args.data_dir, params)
-    test_dl = dataloaders['test']
+#    # fetch dataloaders
+#    dataloaders = data_loader.fetch_dataloader(['test'], args.data_dir, params)
+#    test_dl = dataloaders['test']
 
-    logging.info("- done.")
+#    logging.info("- done.")
 
-    # Define the model
-    model = net.Net(params).cuda() if params.cuda else net.Net(params)
+#    # Define the model
+#    model = net.Net(params).cuda() if params.cuda else net.Net(params)
     
-    loss_fn = net.loss_fn
-    accuracy_fn = net.accuracy_fn
+#    loss_fn = net.loss_fn
+#    accuracy_fn = net.accuracy_fn
     
-    logging.info("Starting evaluation")
+#    logging.info("Starting evaluation")
 
-    # Reload weights from the saved file
-    utils.load_checkpoint(os.path.join(args.runs_dir, args.restore_file + '.pth.tar'), model)
+#    # Reload weights from the saved file
+#    utils.load_checkpoint(os.path.join(args.runs_dir, args.restore_file + '.pth.tar'), model)
 
     # Evaluate
-    test_metrics = evaluate(model, loss_fn, test_dl, accuracy_fn, params)
-    save_path = os.path.join(args.runs_dir, "metrics_test_{}.json".format(args.restore_file))
-    utils.save_dict_to_json(test_metrics, save_path)
+    # test_metrics = evaluate(model, loss_fn, test_dl, accuracy_fn, params, device)
+    #save_path = os.path.join(args.runs_dir, "metrics_test_{}.json".format(args.restore_file))
+    #utils.save_dict_to_json(test_metrics, save_path)

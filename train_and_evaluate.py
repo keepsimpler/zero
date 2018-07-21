@@ -1,12 +1,12 @@
 import logging # 记录日志
 import os
+from tqdm import tqdm # 显示进度条
 
 import pandas as pd
 import numpy as np
 import cv2 # 为了能正确导入torch,见 https://github.com/pytorch/pytorch/issues/643
 import torch
 import torch.optim as optim
-from tqdm import tqdm # 显示进度条
 
 import utils
 from train import train
@@ -29,7 +29,6 @@ def train_and_evaluate(model, train_dataloader, val_dataloader, optimizer, loss_
     best_val_acc = 0.0
     stats = pd.DataFrame()
 
-
     for epoch in range(params.num_epochs):
         # Run one epoch
         logging.info("Epoch {}/{}".format(epoch + 1, params.num_epochs))
@@ -42,12 +41,12 @@ def train_and_evaluate(model, train_dataloader, val_dataloader, optimizer, loss_
 
         # 存储参数和其grad的分布
         for tag, value in model.named_parameters():
-            params.dict[tag+'.norm'] = value.data.norm().cpu().item()
-            params.dict[tag+'.grad.norm'] = value.grad.data.norm().cpu().item()
+            params[tag+'.norm'] = value.data.norm().cpu().item()
+            params[tag+'.grad.norm'] = value.grad.data.norm().cpu().item()
+            #print(len(value[abs(value) <= 1e-5]), len(value))
  
-        params.dict['epoch'] = epoch
-        tmp = pd.DataFrame(params.dict, index=range(1), columns=params.dict.keys())
-        stats = stats.append(tmp, ignore_index=True)
+        params['epoch'] = epoch
+        stats = stats.append(pd.DataFrame([params]), ignore_index=True)
 
         val_acc = params.evaluate_accuracy_avg
         is_best = val_acc>=best_val_acc

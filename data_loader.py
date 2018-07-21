@@ -7,18 +7,7 @@ from torch.utils.data import Dataset, DataLoader
 import torchvision.datasets as datasets
 import torchvision.transforms as transforms
 
-# define a training image loader that specifies transforms on images.
-train_transformer = transforms.Compose([
-    transforms.ToTensor(),
-    transforms.Normalize((0.1307,), (0.3081,)),
-     # x.view(-1, np.prod(x.size()[-3:])) 合并(C,H,W)3个维度 为了使用简单网络
-    transforms.Lambda(lambda x: x.view(-1))
-])
-
-# loader for evaluation, same with train
-eval_transformer = train_transformer
-
-def fetch_dataloader(types, data_dir, params):
+def fetch_dataloader(types, data_dir, dataset_name, params):
     """
     获得DataLoader对象
     Fetches the DataLoader object for each type in types from data_dir.
@@ -26,6 +15,7 @@ def fetch_dataloader(types, data_dir, params):
     Args:
         types: (list) has one or more of 'train', 'val', 'test' depending on which data is required
         data_dir: (string) directory containing the dataset
+        dataset_name: (string) one of ['MNIST', 'CIFAR10', ...]
         params: (Params) hyperparameters 超参数 对象
                 including: train_batch_size, 
                            test_batch_size
@@ -33,11 +23,38 @@ def fetch_dataloader(types, data_dir, params):
 
     Returns:
         data: (dict) contains the DataLoader object for each type in types
+        two dimensions: batch_size * in_features
     """
     dataloaders = {}
 
-    train_ds = datasets.MNIST(data_dir, train=True, download=True, transform=train_transformer)
-    eval_ds = datasets.MNIST(data_dir, train=False, download=True, transform=eval_transformer)
+    if dataset_name == 'MNIST':
+        # define a training image loader that specifies transforms on images.
+        train_transformer = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.1307,), (0.3081,)), # mean and std of MNIST data
+            # x.view(-1, np.prod(x.size()[-3:])) 合并(C=1,H=28,W=28)3个维度 为了使用简单网络
+            transforms.Lambda(lambda x: x.view(-1))
+        ])
+        # loader for evaluation, same with train
+        eval_transformer = train_transformer
+
+        train_ds = datasets.MNIST(data_dir, train=True, download=True, transform=train_transformer)
+        eval_ds = datasets.MNIST(data_dir, train=False, download=True, transform=eval_transformer)
+    elif dataset_name == 'CIFAR10':
+        # define a training image loader that specifies transforms on images.
+        train_transformer = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)), # mean and std of three channels (RGB)
+            # x.view(-1, np.prod(x.size()[-3:])) 合并(C,H,W)3个维度 为了使用简单网络
+            transforms.Lambda(lambda x: x.view(-1))
+        ])
+        # loader for evaluation, same with train
+        eval_transformer = train_transformer
+
+        train_ds = datasets.CIFAR10(data_dir, train=True, download=True, transform=train_transformer)
+        eval_ds = datasets.CIFAR10(data_dir, train=False, download=True, transform=eval_transformer)
+    assert train_ds, eval_ds
+
     for split in ['train', 'val', 'test']:
         if split in types:
 
