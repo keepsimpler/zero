@@ -58,6 +58,6 @@ def train(model, optimizer, loss_fn, dataloader, accuracy_fn, params):
 
     metrics_string = "accuracy={:05.3f},loss={:05.3f}".format(accuracy_avg(), loss_avg())
     logging.info("- Train metrics: " + metrics_string)
-    params.train_accuracy_avg = accuracy_avg()
-    params.train_loss_avg = loss_avg()
+    params['train_accuracy_avg'] = accuracy_avg()
+    params['train_loss_avg'] = loss_avg()
     return params

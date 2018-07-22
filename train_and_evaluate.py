@@ -33,11 +33,13 @@ def train_and_evaluate(model, train_dataloader, val_dataloader, optimizer, loss_
         # Run one epoch
         logging.info("Epoch {}/{}".format(epoch + 1, params.num_epochs))
 
+        # [params] go through functions below and and new statistic.
+
         # compute number of batches in one epoch (one full pass over the training set)
-        train_metrics = train(model, optimizer, loss_fn, train_dataloader, accuracy_fn, params)
+        train(model, optimizer, loss_fn, train_dataloader, accuracy_fn, params)
 
         # Evaluate for one epoch on validation set
-        val_metrics = evaluate(model, loss_fn, val_dataloader, accuracy_fn, params)
+        evaluate(model, loss_fn, val_dataloader, accuracy_fn, params)
 
         # 存储参数和其grad的分布
         for tag, value in model.named_parameters():
@@ -47,6 +49,7 @@ def train_and_evaluate(model, train_dataloader, val_dataloader, optimizer, loss_
  
         params['epoch'] = epoch
         stats = stats.append(pd.DataFrame([params]), ignore_index=True)
+        print(params)
 
         val_acc = params.evaluate_accuracy_avg
         is_best = val_acc>=best_val_acc

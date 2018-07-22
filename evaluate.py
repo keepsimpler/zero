@@ -47,8 +47,8 @@ def evaluate(model, loss_fn, dataloader, accuracy_fn, params):
 
     metrics_string = "accuracy={:05.3f},loss={:05.3f}".format(accuracy_avg(), loss_avg())
     logging.info("- Evaluate metrics: " + metrics_string)
-    params.evaluate_accuracy_avg = accuracy_avg()
-    params.evaluate_loss_avg = loss_avg()
+    params['evaluate_accuracy_avg'] = accuracy_avg()
+    params['evaluate_loss_avg'] = loss_avg()
     return params
 
 
