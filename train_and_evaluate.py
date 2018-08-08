@@ -41,15 +41,21 @@ def train_and_evaluate(model, train_dataloader, val_dataloader, optimizer, loss_
         # Evaluate for one epoch on validation set
         evaluate(model, loss_fn, val_dataloader, accuracy_fn, params)
 
+        params['epoch'] = epoch
         # 存储参数和其grad的分布
         for tag, value in model.named_parameters():
-            params[tag+'.norm'] = value.data.norm().cpu().item()
-            params[tag+'.grad.norm'] = value.grad.data.norm().cpu().item()
+            params['parameter_stats_name'] = tag+'.norm'
+            params['parameter_stats_value'] = value.data.norm().cpu().item()
+            stats = stats.append(pd.DataFrame([params]), ignore_index=True)
+            params['parameter_stats_name'] = tag+'.grad.norm'
+            params['parameter_stats_value'] = value.grad.data.norm().cpu().item()
+            stats = stats.append(pd.DataFrame([params]), ignore_index=True)
+            #params[tag+'.norm'] = value.data.norm().cpu().item()
+            #params[tag+'.grad.norm'] = value.grad.data.norm().cpu().item()
             #print(len(value[abs(value) <= 1e-5]), len(value))
  
-        params['epoch'] = epoch
-        stats = stats.append(pd.DataFrame([params]), ignore_index=True)
-        print(params)
+        #stats = stats.append(pd.DataFrame([params]), ignore_index=True)
+        #print(params)
 
         val_acc = params.evaluate_accuracy_avg
         is_best = val_acc>=best_val_acc

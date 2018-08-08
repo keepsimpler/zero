@@ -40,7 +40,6 @@ if __name__ == '__main__':
     # 获得参数
     df = pd.read_csv(os.path.join(runs_dir, args.params_file))
     for index, params in df.iterrows():
-        print(params)
         # Use GPU if available
         # and Set the random seed for reproducible experiments
         params.cuda = torch.cuda.is_available()
@@ -95,7 +94,7 @@ if __name__ == '__main__':
         # Train the model
         logging.info("Starting training for {} epoch(s)".format(params.num_epochs))
         stats = train_and_evaluate(model, train_dl, val_dl, optimizer, loss_fn, accuracy_fn, params, runs_dir)
-
+        
         if index == 0:
             with open(os.path.join(runs_dir, stats_file), 'w') as f:
                 stats.to_csv(f, index=False)
