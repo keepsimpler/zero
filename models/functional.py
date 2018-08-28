@@ -2,10 +2,74 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import models
+#import models
+
+def custom_conv2d(input, weight, bias=None, stride=1, padding=0, dilation=1):
+    N, in_channels, h_in, w_in = input.shape
+    out_channels, in_channels, *kernel_size = weight.shape
+    h_out = ((h_in + 2 * padding[0] - dilation[0] * (kernel_size[0]-1)-1) // stride[0]) + 1   
+    w_out = ((w_in + 2 * padding[1] - dilation[1] * (kernel_size[1]-1)-1) // stride[1]) + 1
+
+    # a 3-D tensor of shape (N, in_channels * kernel_size[0] * kernel_size[1],
+    # H_out * W_out)
+    input_unfolded = F.unfold(input, kernel_size=kernel_size, padding=padding, dilation=dilation, stride=stride)
+    # transpose to the tensor of shape (N, H_out * W_out,
+    # in_channels * kernel_size[0] * kernel_size[1])
+    input_unfolded = input_unfolded.transpose(1, 2)
+    # flatten kernels of shape (out_channels, in_channels, kernel_size[0], kernel_size[1])
+    # to shape (out_channels, in_channels * kernel_size[0] * kernel_size[1]),
+    # then transpose to shape (in_channels * kernel_size[0] * kernel_size[1], out_channels)
+    weight = weight.view(weight.size(0), -1).t()
+    # matrix multiple to shape (N, H_out * W_out, out_channels)
+    output = input_unfolded.matmul(weight)
+    # transpose to (N, out_channels, H_out * W_out)
+    output = output.transpose(1, 2)
+    if bias is not None:
+        # broadcasting element-wise add bias of shape (out_channels, 1)
+        output = output + bias.view(-1, 1)
+    # squeeze to shape (N, out_channels, H_out, W_out)
+    output = output.view(input.shape[0], out_channels, h_out, w_out)
+    return output
+
+def link_conv2d(input, act_fn, weight, bias=None, stride=1, padding=0, dilation=1):
+    N, in_channels, h_in, w_in = input.shape
+    out_channels, in_channels, *kernel_size = weight.shape
+    h_out = ((h_in + 2 * padding[0] - dilation[0] * (kernel_size[0]-1)-1) // stride[0]) + 1   
+    w_out = ((w_in + 2 * padding[1] - dilation[1] * (kernel_size[1]-1)-1) // stride[1]) + 1
+
+    # a 3-D tensor of shape (N, in_channels * kernel_size[0] * kernel_size[1],
+    # H_out * W_out)
+    input_unfolded = F.unfold(input, kernel_size=kernel_size, padding=padding, dilation=dilation, stride=stride)
+    # transpose to the tensor of shape (N, H_out * W_out,
+    # in_channels * kernel_size[0] * kernel_size[1])
+    input_unfolded = input_unfolded.transpose(1, 2)
+    # add a new dimension at the end of the tensor to get shape of
+    # (N, H_out * W_out, in_channels * kernel_size[0] * kernel_size[1], 1)
+    input_unfolded = input_unfolded.unsqueeze(-1)
+    # flatten kernels of shape (out_channels, in_channels, kernel_size[0], kernel_size[1])
+    # to shape (out_channels, in_channels * kernel_size[0] * kernel_size[1]),
+    # then transpose to shape (in_channels * kernel_size[0] * kernel_size[1], out_channels)
+    weight = weight.view(weight.size(0), -1).t()
+    # broadcasting element-wise multiple to shape 
+    # (N, H_out * W_out, in_channels * kernel_size[0] * kernel_size[1], out_channels)
+    output = input_unfolded * weight
+    # perform link activation functions
+    output = act_fn(output)
+    # sum according to dimension [in_channels * kernel_size[0] * kernel_size[1]] to
+    # shape (N, H_out * W_out, out_channels)
+    output = torch.sum(output, -2)
+    # transpose to (N, out_channels, H_out * W_out)
+    output = output.transpose(1, 2)
+    if bias is not None:
+        # broadcasting element-wise add bias of shape (out_channels, 1)
+        output = output + bias.view(-1, 1)
+    # squeeze to shape (N, out_channels, H_out, W_out)
+    output = output.view(input.shape[0], out_channels, h_out, w_out)
+    return output
+
 
 def init_weights(m):
-    if type(m) == nn.Linear or type(m) == models.LinkRes:
+    if type(m) == nn.Linear :  # or type(m) == models.LinkRes
         stdv = 1. / math.sqrt(m.weight.data.size(1)) # in_features 大小
         m.weight.data.uniform_(-stdv, stdv)
         m.weight.data[m.weight.data > stdv * 0.1] = 0
