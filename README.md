@@ -4,21 +4,21 @@
 
 ## Project Structure
 
-├── models \
-│   ├── functional.py \
+│── models \
+│   │── functional.py \
 │   └── link_fc.py \
 │   └── link_conv.py \
-├── data \
-│   ├── MNIST \
-│   ├── CIFAR10 \
+│── data \
+│   │── MNIST \
+│   │── CIFAR10 \
 │   └── Imagenet \
-├── runs \
-│   ├── checkpoints \
+│── runs \
+│   │── checkpoints \
 │   └── logs \
-├── notebooks \
-├── tutorial1.py \
-├── tutorial2.py \
-├── ......
+│── notebooks \
+│── tutorial1.py \
+│── tutorial2.py \
+│── ......
 └── README.md
 
 ## Requires
