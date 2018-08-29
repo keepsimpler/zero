@@ -1,3 +1,4 @@
+# coding=utf-8
 ## copied from https://stackoverflow.com/questions/51459987/variation-between-custom-convolution-vs-pytorch-conv2d-results
 
 import torch

@@ -2,7 +2,6 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-#import models
 
 def custom_conv2d(input, weight, bias=None, stride=1, padding=0, dilation=1):
     N, in_channels, h_in, w_in = input.shape
