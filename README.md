@@ -35,4 +35,4 @@ min w.r.t. weight w^l
 ## Requires
 . pytorch>0.4 \
 . pytorch-ignite \
-. fastai \
+. fastai 
