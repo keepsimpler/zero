@@ -1,38 +1,26 @@
-# Zero, NN-based ML implemented with Pytorch
+## Relation between Neural Networks and Complex Networks
+----------------------------------------
+The simplest definition of a neural network, more properly referred to as an 'artificial' neural network (ANN), is provided by the inventor of one of the first neurocomputers, Dr. Robert Hecht-Nielsen. He defines a neural network as:
 
-## Project Structure
+> ... a computing **system** made up of a number of simple, **highly interconnected processing elements**, which process information by their dynamic state response to external inputs.
 
-│── models \
-│   │── functional.py \
-│   └── link_fc.py \
-│   └── link_conv.py \
-│── data \
-│   │── MNIST \
-│   │── CIFAR10 \
-│   └── Imagenet \
-│── runs \
-│   │── checkpoints \
-│   └── logs \
-│── notebooks \
-│── 01-tutorial.py \
-│── 02-tutorial2.py \
-│── ...... \
-└── README.md \
+A neural network can be seen as a networked system.
+And the theory of complex networks happened to be for the modeling of networked complex systems.
 
-## 01 link full connected network
-bias is false; mean after link act or sum after link act; weight distribution is [-1,1] rather than [-1/sqrt(n),-1/sqrt(n)]; residential
+The definition of complex network on Wikipedia is:
 
-Resnet: from relu to tanh, from two convs/bns to one conv/bn, plus relu, conv-->bn-->relu-->+shortcut, relu->conv->bn->+shortcut, conv->bn->relu->conv->bn->+shortcut->relu
+>... a complex network is a **graph (network) with non-trivial topological features**—features that do not occur in simple networks such as lattices or random graphs but often occur in **graphs modeling of real systems**.
 
-## normalization / regularization
-arg min max ||x^l|| / ||x^{l-1}||
-max w.r.t. batch samples, find the maximum |||x^l|| / ||x^{l-1}|| among the batch samples.
-min w.r.t. weight w^l
-
-## resnet, wide resnet, resnext, densenet, automatically architecture searching
+Therefore, neural networks are instances of networked complex systems that can be modeled using the theory of complex networks.
 
 
-## Requires
-. pytorch>0.4 \
-. pytorch-ignite \
-. fastai 
+We try to introduce recent results of complex networks into neural networks, and want to evaluate a hyperthesis:
+
+> The structural features of neural networks strongly influence the performance of them, and there exist several optimized structural features with better performance. 
+
+### Requires
+-------------
+
+. pytorch > 1.0
+
+. fastai  > 
