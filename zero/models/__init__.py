@@ -5,20 +5,17 @@ PyTorch中定义网络的标准方式。在 __init__ 函数中选择网络的各
 要保证上一层结束后的输出数据的维度符合下一层输入数据的维度要求（即层与层之间的接口）。
 """
 
-from .simplenets import *
-from .linknets import *
+from .simplenet import *
+from .linknet import *
+from .resnet import *
 
 __all__ = [
     'LinearContainer',
     'LinearResContainer',
     'LV1',
     'LV1Container',
-    'Link',
-    'LinkContainer',
-    'LinkAdaptiveStep',
-    'LinkAdaptiveStepRes',
-    'LinkAdaptiveStepResContainer',
-    'LinkRes',
-    'LinkResContainer',
-    'functional'
+    'LinkFC',
+    'LinkFCContainer',
+    'functional',
+    'ResNet18'
 ]

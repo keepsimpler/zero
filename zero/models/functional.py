@@ -4,6 +4,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 def custom_conv2d(input, weight, bias=None, stride=1, padding=0, dilation=1):
+    """
+    conv2d function implemented using *unfold* function 
+    """
     N, in_channels, h_in, w_in = input.shape
     out_channels, in_channels, *kernel_size = weight.shape
     h_out = ((h_in + 2 * padding[0] - dilation[0] * (kernel_size[0]-1)-1) // stride[0]) + 1   
@@ -31,6 +34,14 @@ def custom_conv2d(input, weight, bias=None, stride=1, padding=0, dilation=1):
     return output
 
 def link_conv2d(input, act_fn, weight, bias=None, stride=1, padding=0, dilation=1):
+    """
+    conv2d with non-linear link function
+
+    Args:
+    act_fn (function): a non-linear element-wise activation function
+
+    warning: bias has shape of (out_channels)
+    """
     N, in_channels, h_in, w_in = input.shape
     out_channels, in_channels, *kernel_size = weight.shape
     h_out = ((h_in + 2 * padding[0] - dilation[0] * (kernel_size[0]-1)-1) // stride[0]) + 1   
@@ -66,15 +77,6 @@ def link_conv2d(input, act_fn, weight, bias=None, stride=1, padding=0, dilation=
     output = output.view(input.shape[0], out_channels, h_out, w_out)
     return output
 
-
-def init_weights(m):
-    if type(m) == nn.Linear :  # or type(m) == models.LinkRes
-        stdv = 1. / math.sqrt(m.weight.data.size(1)) # in_features 大小
-        m.weight.data.uniform_(-stdv, stdv)
-        m.weight.data[m.weight.data > stdv * 0.1] = 0
-        m.weight.data[m.weight.data < - stdv * 0.1] = 0
-        print('zero=', len(m.weight.data[m.weight.data == 0]), m.weight.data.size())
-
 def lv1(input, weight, bias=None):
     residential = F.linear(input, weight, bias) * input
     #output = input + residential
@@ -94,7 +96,7 @@ def adaptive_step(input, stepwise):
     output = input * stepwise
     return output
 
-def link(input, act_fn, weight, bias=None):
+def link_fc(input, act_fn, weight, bias=None):
     r"""
     非线性在边上，而不是在点上，的函数。:math:`y = f(x * A^T + b)` 是element-wise函数
 
@@ -117,8 +119,14 @@ def link(input, act_fn, weight, bias=None):
         output += bias # broadcasting element-wise 加法
     # 执行非线性操作 (element-wise)
     output = act_fn(output)
-    # 对倒数第2个维度(in_features)求和
-    output = torch.sum(output, -2)
+    # add the input
+    input = input / weight.shape[0]
+    dims = list(input.shape[:-1])
+    dims.append(weight.shape[0])
+    input = input.expand(dims)
+    output = input + output
+    # 对倒数第2个维度(in_features)求和(or 求平均)
+    output = torch.mean(output, -2) # / 2# sum mean
     return output
 
 
