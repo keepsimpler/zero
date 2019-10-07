@@ -18,4 +18,5 @@ __all__ = [
     'LinkFCContainer',
     'functional',
     'ResNet18'
+    'functional'
 ]
