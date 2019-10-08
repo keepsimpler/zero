@@ -1,5 +1,5 @@
 ## Relation between Neural Networks and Complex Networks
-----------------------------------------
+
 The simplest definition of a neural network, more properly referred to as an 'artificial' neural network (ANN), is provided by the inventor of one of the first neurocomputers, Dr. Robert Hecht-Nielsen. He defines a neural network as:
 
 > ... a computing **system** made up of a number of simple, **highly interconnected processing elements**, which process information by their dynamic state response to external inputs.
@@ -18,8 +18,8 @@ We try to introduce recent results of complex networks into neural networks, and
 
 > The structural features of neural networks strongly influence the performance of them, and there exist several optimized structural features with better performance. 
 
-### Requires
--------------
+## Requires
+
 
 . pytorch > 1.0
 
