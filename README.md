@@ -24,4 +24,4 @@ We try to introduce recent results of complex networks into neural networks, and
 You can install Zero with pip: `pip install git+https://github.com/keepsimpler/zero`. 
 Or clone this repo, cd to its directory, and `pip install -e .` .
 
-Zero requires the latest stable [pytorch](http://www.pytorch.org) framework and [fastai](fast.ai) framework.
+Zero requires the latest stable [pytorch](http://www.pytorch.org) framework and [fastai](http://www.fast.ai) framework.
