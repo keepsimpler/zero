@@ -18,9 +18,10 @@ We try to introduce recent results of complex networks into neural networks, and
 
 > The structural features of neural networks strongly influence the performance of them, and there exist several optimized structural features with better performance. 
 
-## Requires
 
+## Installation
 
-. pytorch > 1.0
+You can install Zero with pip: `pip install git+https://github.com/keepsimpler/zero`. 
+Or clone this repo, cd to its directory, and `pip install -e .` .
 
-. fastai  > 
+Zero requires the latest stable [pytorch](http://www.pytorch.org) framework and [fastai](fast.ai) framework.

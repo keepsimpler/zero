@@ -57,35 +57,60 @@ bn_relu_conv = partial(conv_unit, seq = (3,2,1))  # BN-->Relu-->Conv
 relu_conv = partial(conv_unit, seq = (2,1,0))  # Relu-->Conv
 conv_bn = partial(conv_unit, seq = (1,3,0))  # Conv-->BN
 
-# residential block
-def resnet_basicblock(ni, nf, stride:int=1):
-    return nn.Sequential(*[*relu_conv_bn(ni, nf, stride=stride).children()],
-                         *[*relu_conv_bn(ni, nf).children()])
+def resnet_basicblock(ni, no, nh, stride:int=1):
+    """
+    Basic Unit in Residual Networks, ni == no == nh
 
-def resnet_bottleneck(ni, nh, nf, stride:int=1, groups:int=1):
+    Reference:
+    ----------
+    Deep Residual Learning for Image Recognition:
+    https://arxiv.org/abs/1512.03385
+    """
+    return nn.Sequential(*[*relu_conv_bn(ni, nh, stride=stride).children()],
+                         *[*relu_conv_bn(nh, no).children()])
+
+def resnet_bottleneck(ni, no, nh, stride:int=1, groups:int=1, zero_bn=True):
+    """
+    Bottleneck Unit in Residual Networks, ni == no > nh
+
+    Reference:
+    ----------
+    Deep Residual Learning for Image Recognition:
+    https://arxiv.org/abs/1512.03385
+    """
     return nn.Sequential(*[*relu_conv_bn(ni, nh, ks=1).children()],
                          *[*relu_conv_bn(nh, nh, stride=stride, groups=groups).children()],
-                         *[*relu_conv_bn(nh, nf, ks=1, zero_bn=True).children()])
+                         *[*relu_conv_bn(nh, no, ks=1, zero_bn=zero_bn).children()])
 
 # residential block
-def preresnet_basicblock(ni, nf, stride:int=1):
-    return nn.Sequential(*[*bn_relu_conv(ni, nf, stride=stride).children()],
-                         *[*bn_relu_conv(ni, nf).children()])
+def preresnet_basicblock(ni, no, nh, stride:int=1):
+    """
+    Basic Unit in Pre-action Residual Networks, ni == no == nh
 
-def preresnet_bottleneck(ni, nh, nf, stride:int=1, groups:int=1):
+    Reference:
+    ----------
+    Identity Mappings in Deep Residual Networks:
+    https://arxiv.org/abs/1603.05027
+    """
+    return nn.Sequential(*[*bn_relu_conv(ni, nh, stride=stride).children()],
+                         *[*bn_relu_conv(nh, no).children()])
+
+def preresnet_bottleneck(ni, no, nh, stride:int=1, groups:int=1, zero_bn=True):
     return nn.Sequential(*[*bn_relu_conv(ni, nh, ks=1).children()],
                          *[*bn_relu_conv(nh, nh, stride=stride, groups=groups).children()],
-                         *[*bn_relu_conv(nh, nf, ks=1).children()])
+                         *[*bn_relu_conv(nh, no, ks=1, zero_bn=zero_bn).children()])
 
 
 def xception(ni:int, no:int, nh:int, ks:int=3, stride:int=1, zero_bn:bool=False):
     """
+    Basic unit in xception networks.
+
     Reference:
     ----------
     Xception: Deep Learning with Depthwise Separable Convolutions:
     https://arxiv.org/abs/1610.02357
     """
-    return nn.Sequential(*[*relu_conv(ni, no, ks=ks, stride=stride, groups=ni).children()],
+    return nn.Sequential(*[*relu_conv(ni, nh, ks=ks, stride=stride, groups=ni).children()],
                         *[*conv_bn(nh, no, ks=1, zero_bn=zero_bn).children()]
                         )
 
