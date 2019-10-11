@@ -4,8 +4,8 @@
 #################################################
 # file to edit: ../resnet.ipynb
 
-from imports import *
-from core import *
+from .imports import *
+from .core import *
 
 class ResStage(nn.Module):
     """

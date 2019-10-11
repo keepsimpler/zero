@@ -4,7 +4,7 @@
 #################################################
 # file to edit: ../core.ipynb
 
-from imports import *
+from .imports import *
 
 def conv_unit(ni:int, no:int, ks:int=3, stride:int=1, groups:int=1, zero_bn:bool=False, seq:tuple=(1,2,3)):
     """
