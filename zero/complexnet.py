@@ -4,6 +4,9 @@
 #################################################
 # file to edit: ../complexnet.ipynb
 
+from .imports import *
+from .core import *
+
 def niche(s:int, c:int, flip_diag:bool=True):
     """Niche Model for Food Web
     Args:
