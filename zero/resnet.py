@@ -118,8 +118,8 @@ class TripleStage(nn.Module):
         # the first unit, stride size determine if downsample or not
         self.unit0 = Unit(ni, no, nh, stride=stride, **kwargs)
         self.idmapping0 = IdentityMapping(ni, no, stride=stride)
-        self.unit1 = Unit(ni, no, nh, stride=1, **kwargs)
-        self.unit2 = Unit(ni, no, nh, stride=1, **kwargs)
+        self.unit1 = Unit(no, no, nh, stride=1, **kwargs)
+        self.unit2 = Unit(no, no, nh, stride=1, **kwargs)
         units = []
         for i in range(nu - 3):
             units += [Unit(no, no, nh, stride=1, **kwargs)] #resnet_bottleneck
@@ -163,9 +163,9 @@ class QuadStage(nn.Module):
         # the first unit, stride size determine if downsample or not
         self.unit0 = Unit(ni, no, nh, stride=stride, **kwargs)
         self.idmapping0 = IdentityMapping(ni, no, stride=stride)
-        self.unit1 = Unit(ni, no, nh, stride=1, **kwargs)
-        self.unit2 = Unit(ni, no, nh, stride=1, **kwargs)
-        self.unit3 = Unit(ni, no, nh, stride=1, **kwargs)
+        self.unit1 = Unit(no, no, nh, stride=1, **kwargs)
+        self.unit2 = Unit(no, no, nh, stride=1, **kwargs)
+        self.unit3 = Unit(no, no, nh, stride=1, **kwargs)
         units = []
         for i in range(nu - 4):
             units += [Unit(no, no, nh, stride=1, **kwargs)] #resnet_bottleneck
@@ -178,17 +178,17 @@ class QuadStage(nn.Module):
         x4 = self.unit3(x3) + x3
         for i, unit in enumerate(self.units):
             if i // 6 == 0:
-                x3 = block(x4) + x3
+                x3 = unit(x4) + x3
             elif i // 6 == 1:
-                x2 = block(x3) + x2
+                x2 = unit(x3) + x2
             elif i // 6 == 2:
-                x1 = block(x2) + x1
+                x1 = unit(x2) + x1
             elif i // 6 == 3:
-                x2 = block(x1) + x2
+                x2 = unit(x1) + x2
             elif i // 6 == 4:
-                x3 = block(x2) + x3
+                x3 = unit(x2) + x3
             elif i // 6 == 5:
-                x4 = block(x3) + x4
+                x4 = unit(x3) + x4
         return x4 if i//6 == 0 else x3 if i//6 == 1 or i//6 == 5 else x2 if i//6 == 2 or i//6 == 4 else x1 # if i//6 == 3
 
 class FiveStage(nn.Module):
@@ -213,10 +213,10 @@ class FiveStage(nn.Module):
         # the first unit, stride size determine if downsample or not
         self.unit0 = Unit(ni, no, nh, stride=stride, **kwargs)
         self.idmapping0 = IdentityMapping(ni, no, stride=stride)
-        self.unit1 = Unit(ni, no, nh, stride=1, **kwargs)
-        self.unit2 = Unit(ni, no, nh, stride=1, **kwargs)
-        self.unit3 = Unit(ni, no, nh, stride=1, **kwargs)
-        self.unit4 = Unit(ni, no, nh, stride=1, **kwargs)
+        self.unit1 = Unit(no, no, nh, stride=1, **kwargs)
+        self.unit2 = Unit(no, no, nh, stride=1, **kwargs)
+        self.unit3 = Unit(no, no, nh, stride=1, **kwargs)
+        self.unit4 = Unit(no, no, nh, stride=1, **kwargs)
         units = []
         for i in range(nu - 5):
             units += [Unit(no, no, nh, stride=1, **kwargs)] #resnet_bottleneck
@@ -230,19 +230,27 @@ class FiveStage(nn.Module):
         x5 = self.unit4(x4) + x4
         for i, unit in enumerate(self.units):
             if i // 8 == 0:
-                x4 = block(x5) + x4
+                x4 = unit(x5) + x4
             elif i // 8 == 1:
-                x3 = block(x4) + x3
+                x3 = unit(x4) + x3
             elif i // 8 == 2:
-                x2 = block(x3) + x2
+                x2 = unit(x3) + x2
             elif i // 8 == 3:
-                x1 = block(x2) + x1
+                x1 = unit(x2) + x1
             elif i // 8 == 4:
-                x2 = block(x1) + x2
+                x2 = unit(x1) + x2
             elif i // 8 == 5:
-                x3 = block(x2) + x3
+                x3 = unit(x2) + x3
             elif i // 8 == 6:
-                x4 = block(x3) + x4
+                x4 = unit(x3) + x4
             elif i // 8 == 7:
-                x5 = block(x4) + x5
+                x5 = unit(x4) + x5
         return x5 if i//8 == 0 else x4 if i//8 == 1 or i//8 == 7 else x3 if i//8 == 2 or i//8 == 6 else x2 if i//8 == 3 or i//8 == 5 else x1 # if i//6 == 3
+
+def folded_resnet50(Stage, Unit, ni:int=32, exp:int=4, c_in:int=3, c_out:int=1000):
+    nhs = [ni] + [2*ni] + [4*ni] + [8*ni]
+    nos = [nh*exp for nh in nhs]
+    return ResNet(nhs = nhs, nos = nos,
+                  nus = [3*2,4*2,6*2,3*2], strides = [1,2,2,2], Stage = Stage,
+                  Unit = Unit,
+                  c_in=c_in, c_out=c_out)

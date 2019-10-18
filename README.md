@@ -25,3 +25,9 @@ You can install Zero with pip: `pip install git+https://github.com/keepsimpler/z
 Or clone this repo, cd to its directory, and `pip install -e .` .
 
 Zero requires the latest stable [pytorch](http://www.pytorch.org) framework and [fastai](http://www.fast.ai) framework.
+
+## Tutorials on [imagewoof](https://github.com/fastai/imagenette) dataset
+
+1. [Neural networks whose architectures are complex networks](complexnet_imagewoof.ipynb)
+
+2. [A floded Residual Network](resnet_imagewoof.ipynb)
