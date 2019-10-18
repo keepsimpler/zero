@@ -39,7 +39,7 @@ def conv_unit(ni:int, no:int, ks:int=3, stride:int=1, groups:int=1, zero_bn:bool
             has_conv = True
             unit += [nn.Conv2d(ni, no, ks, stride=stride, padding=ks//2, groups=groups, bias=False)]
         elif e == 2:  # relu operator
-            unit += [nn.ReLU(inplace=True)]
+            unit += [nn.ReLU(inplace=False)]  # in folded resnet, inplace has to be false
         elif e == 3:  # bn operator
             if has_conv: # if has conv operator
                 bn = nn.BatchNorm2d(no)  # bn operator's `ni` equal to 'no' of conv op

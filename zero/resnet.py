@@ -45,7 +45,7 @@ def resnet_stem(ni:int=3, nf:int=64):
     """
     return nn.Sequential(*[*conv_bn_relu(ni, 32, stride=2).children()],  #downsample
                          *[*conv_bn_relu(32, 32, stride=1).children()],
-                         *[*conv_bn(32, nf, stride=1).children()],  # _relu
+                         *[*conv_bn_relu(32, nf, stride=1).children()],
                          nn.MaxPool2d(kernel_size=3, stride=2, padding=1)  #downsample
                         )
 
@@ -96,6 +96,30 @@ def resnet101(c_in:int=3, c_out:int=1000):
                   Unit = resnet_bottleneck,
                   c_in=c_in, c_out=c_out)
 
+class DualStage(nn.Module):
+    def __init__(self, ni:int, no:int, nh:int, nu:int, stride:int, Unit:nn.Module, **kwargs):
+        assert nu >= 2
+        super(DualStage, self).__init__()
+        # the first unit, stride size determine if downsample or not
+        self.unit0 = Unit(ni, no, nh, stride=stride, **kwargs)
+        self.idmapping0 = IdentityMapping(ni, no, stride=stride)
+        self.unit1 = Unit(no, no, nh, stride=1, **kwargs)
+        units = []
+        for i in range(nu - 2):
+            units += [Unit(no, no, nh, stride=1, **kwargs)] #resnet_bottleneck
+        self.units = nn.ModuleList(units)
+
+    def forward(self, x):
+        x1 = self.unit0(x) + self.idmapping0(x)
+        x2 = self.unit1(x1) + x1
+        for i, unit in enumerate(self.units):
+            if i//2 == 0:
+                x1 = unit(x2) + x1
+            elif i//2 == 1:
+                x2 = unit(x1) + x2
+        return x2 if i//2 == 1 else x1
+
+
 class TripleStage(nn.Module):
     """
     Stage in a residual network, usually the units in a residual network are divided into
@@ -138,7 +162,7 @@ class TripleStage(nn.Module):
                 x2 = unit(x2) + x2
             elif i//4 == 3:
                 x3 = unit(x2) + x3
-        return x3 if i//4 == 0 else x2 if i//4 == 1 else x1 if i//4 == 2 else x2 #if i//4 == 3
+        return x2 if i//4 == 0 else x1 if i//4 == 1 else x2 if i//4 == 2 else x3 #if i//4 == 3
 
 
 class QuadStage(nn.Module):
@@ -189,7 +213,7 @@ class QuadStage(nn.Module):
                 x3 = unit(x2) + x3
             elif i // 6 == 5:
                 x4 = unit(x3) + x4
-        return x4 if i//6 == 0 else x3 if i//6 == 1 or i//6 == 5 else x2 if i//6 == 2 or i//6 == 4 else x1 # if i//6 == 3
+        return x3 if i//6 == 0 or i//6 ==4 else x2 if i//6 == 1 or i//6 == 3 else x1 if i//6 == 2 else x4 # if i//6 == 5
 
 class FiveStage(nn.Module):
     """
@@ -245,12 +269,12 @@ class FiveStage(nn.Module):
                 x4 = unit(x3) + x4
             elif i // 8 == 7:
                 x5 = unit(x4) + x5
-        return x5 if i//8 == 0 else x4 if i//8 == 1 or i//8 == 7 else x3 if i//8 == 2 or i//8 == 6 else x2 if i//8 == 3 or i//8 == 5 else x1 # if i//6 == 3
+        return x4 if i//8 == 0 or i//8 == 6 else x3 if i//8 == 1 or i//8 == 5 else x2 if i//8 == 2 or i//8 == 4 else x1 if i//8 == 3 else x5 # if i//8 == 7
 
 def folded_resnet50(Stage, Unit, ni:int=32, exp:int=4, c_in:int=3, c_out:int=1000):
     nhs = [ni] + [2*ni] + [4*ni] + [8*ni]
     nos = [nh*exp for nh in nhs]
     return ResNet(nhs = nhs, nos = nos,
-                  nus = [3*2,4*2,6*2,3*2], strides = [1,2,2,2], Stage = Stage,
+                  nus = [3*4,4*4,6*4,3*4], strides = [1,2,2,2], Stage = Stage,
                   Unit = Unit,
                   c_in=c_in, c_out=c_out)
