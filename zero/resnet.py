@@ -45,7 +45,7 @@ def resnet_stem(ni:int=3, nf:int=64):
     """
     return nn.Sequential(*[*conv_bn_relu(ni, 32, stride=2).children()],  #downsample
                          *[*conv_bn_relu(32, 32, stride=1).children()],
-                         *[*conv_bn_relu(32, nf, stride=1).children()],
+                         *[*conv_bn(32, nf, stride=1).children()],  # _relu
                          nn.MaxPool2d(kernel_size=3, stride=2, padding=1)  #downsample
                         )
 
