@@ -4,6 +4,9 @@
 #################################################
 # file to edit: ../complexnet.ipynb
 
+from .imports import *
+from .core import *
+
 def build_graph(model:str=None, n:int=None, p:float=None, m:int=None, k:int=None):
     """
     Generating undirected random graphs according to several common models
@@ -147,7 +150,7 @@ def summary_DAG(G):
     out_nodes = [v for v, d in G.out_degree() if d==0]
     num_out_nodes = len(out_nodes)
 
-    path_lens = path_counts = num_paths = None
+    paths = max_length = num_paths = None
 
     #if the unique input node and the unique output node have been added
     if num_in_nodes == 1 and num_out_nodes == 1 and num_real_nodes != num_nodes:
