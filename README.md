@@ -30,4 +30,4 @@ Zero requires the latest stable [pytorch](http://www.pytorch.org) framework and 
 
 1. [Neural networks whose architectures are complex networks](complexnet_imagewoof.ipynb)
 
-2. [A floded Residual Network](resnet_imagewoof.ipynb)
+2. [A folded Residual Network](resnet_imagewoof.ipynb)
