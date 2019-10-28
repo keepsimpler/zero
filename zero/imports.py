@@ -2,6 +2,8 @@ from collections import OrderedDict
 
 from fastai.vision import *
 
+import torch.utils.checkpoint as cp # checkpointing
+
 # import torch
 # import torch.nn as nn
 # import torch.nn.functional as F

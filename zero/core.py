@@ -114,6 +114,19 @@ def xception(ni:int, no:int, nh:int, ks:int=3, stride:int=1, zero_bn:bool=False)
                         *[*conv_bn(nh, no, ks=1, zero_bn=zero_bn).children()]
                         )
 
+def xception_groups(ni:int, no:int, nh:int, ks:int=3, stride:int=1, groups:int=1, zero_bn:bool=False):
+    """
+    xception with groups.
+
+    Reference:
+    ----------
+    Xception: Deep Learning with Depthwise Separable Convolutions:
+    https://arxiv.org/abs/1610.02357
+    """
+    return nn.Sequential(*[*relu_conv(ni, nh, ks=ks, stride=stride, groups=ni).children()],
+                        *[*conv_bn(nh, no, ks=1, groups=groups, zero_bn=zero_bn).children()]
+                        )
+
 class Classifier(nn.Module):
     """
     Usually work as the final operator for image processing (classification, object detection, etc.)
