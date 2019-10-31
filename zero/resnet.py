@@ -40,12 +40,12 @@ class ResStage(nn.Module):
         return x
 
 
-def resnet_stem(ni:int=3, nf:int=64):
+def resnet_stem(ni:int=3, no:int=64):
     """Stem stage in resnet
     """
     return nn.Sequential(*[*conv_bn_relu(ni, 32, stride=2).children()],  #downsample
                          *[*conv_bn_relu(32, 32, stride=1).children()],
-                         *[*conv_bn_relu(32, nf, stride=1).children()],
+                         *[*conv_bn_relu(32, no, stride=1).children()],
                          nn.MaxPool2d(kernel_size=3, stride=2, padding=1)  #downsample
                         )
 
@@ -59,6 +59,8 @@ class ResNet(nn.Sequential):
     nos : number of output channels for all stages
     nus : number of units of all stages
     strides : stride sizes of all stages
+    Stem : class of the stem layer, Stem class should has calling format:
+        Stem(ni:int, no:int)
     Stage : class of the stages, Stage class has calling format:
         Stage(ni:int, no:int, nh:int, nu:int, stride:int, Unit:nn.Module, **kwargs)
     Unit : class of the basic units
@@ -66,10 +68,10 @@ class ResNet(nn.Sequential):
     c_out : number of output channels (features) of the whole network
     kwargs : additional args to Unit class
     """
-    def __init__(self, nhs, nos, nus, strides, Stage:nn.Module, Unit:nn.Module,
+    def __init__(self, nhs, nos, nus, strides, Stem:nn.Module, Stage:nn.Module, Unit:nn.Module,
                  c_in:int=3, c_out:int=1000, **kwargs):
         super(ResNet, self).__init__()
-        stem = resnet_stem(c_in, nhs[0])
+        stem = Stem(c_in, nhs[0])
         stages = []
         ni = nhs[0]
         for i in range(len(nhs)):
@@ -86,13 +88,13 @@ class ResNet(nn.Sequential):
 
 def resnet50(c_in:int=3, c_out:int=1000):
     return ResNet(nhs = [64, 128, 256, 512], nos = [256, 512, 1024, 2048],
-                  nus = [3,4,6,3], strides = [1,2,2,2], Stage = ResStage,
+                  nus = [3,4,6,3], strides = [1,2,2,2], Stem = resnet_stem, Stage = ResStage,
                   Unit = resnet_bottleneck,
                   c_in=c_in, c_out=c_out)
 
 def resnet101(c_in:int=3, c_out:int=1000):
     return ResNet(nhs = [64, 128, 256, 512], nos = [256, 512, 1024, 2048],
-                  nus = [3,4,23,3], strides = [1,2,2,2], Stage = ResStage,
+                  nus = [3,4,23,3], strides = [1,2,2,2], Stem = resnet_stem, Stage = ResStage,
                   Unit = resnet_bottleneck,
                   c_in=c_in, c_out=c_out)
 
@@ -271,10 +273,32 @@ class FiveStage(nn.Module):
                 x5 = unit(x4) + x5
         return x4 if i//8 == 0 or i//8 == 6 else x3 if i//8 == 1 or i//8 == 5 else x2 if i//8 == 2 or i//8 == 4 else x1 if i//8 == 3 else x5 # if i//8 == 7
 
-def folded_resnet50(Stage, Unit, ni:int=32, exp:int=4, c_in:int=3, c_out:int=1000):
-    nhs = [ni] + [2*ni] + [4*ni] + [8*ni]
-    nos = [nh*exp for nh in nhs]
+def folded_resnet(Stem, Stage, Unit, ni:int=32, num_stages:int=4, num_units:int=6, exp:int=2,
+                  bottle_scale:int=1, first_downsample:bool=True, c_in:int=3, c_out:int=10):
+    """
+    A folded residual network.
+
+    Parameters:
+    -----------
+    Stem : class of the stem layer.
+    Stage : class of the stages.
+    Unit : class of the basic blocks.
+    ni  :  number of input channels of the first stage
+            equal to number of output channels of the stem layer.
+    num_stages : number of stages.
+    num_units : number of units per stage.
+    exp : expansion coefficient for number of channels increasing with stages.
+    bottle_scale : bottleneck coefficient.
+    first_downsample : does downsample at the first stage.
+    c_in : number of input channels of the stem layer.
+    c_out :
+    """
+    nhs = [ni * exp ** i for i in range(num_stages)] # [ni] + [exp*ni] + [exp*ni] + [exp*ni]
+    nos = [nh*bottle_scale for nh in nhs]
+    nus = [num_units] * num_stages  # all stages have the same number of units
+    strides = [1 if i==0 and not first_downsample else 2 for i in range(num_stages)]
+    print(nhs, nos, nus, strides)
     return ResNet(nhs = nhs, nos = nos,
-                  nus = [3*4,4*4,6*4,3*4], strides = [1,2,2,2], Stage = Stage,
+                  nus = nus, strides = strides, Stem = Stem, Stage = Stage,
                   Unit = Unit,
                   c_in=c_in, c_out=c_out)
