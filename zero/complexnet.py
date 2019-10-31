@@ -6,294 +6,7 @@
 
 from .imports import *
 from .core import *
-
-def build_graph(model:str=None, n:int=None, p:float=None, m:int=None, k:int=None):
-    """
-    Generating undirected random graphs according to several common models
-
-    Parameters:
-    -----------
-
-    model : collection of random models:
-            ER -
-            BA -
-            PC - Powerlaw-Clustering
-            WS -
-    n     : number of nodes
-    p     : the probability of clustering in PC model, the probability of rewiring in WS model
-    m     : the number of new nodes added at each step, both in BA and PC models
-    k     : the average degree of all nodes both in ER model and in WS model
-    """
-    is_connected = False
-    while not is_connected:
-        if model == 'ER':
-            G = nx.random_graphs.gnm_random_graph(n, k * n)
-        elif model == 'BA':
-            G = nx.random_graphs.barabasi_albert_graph(n, m)
-        elif model == 'PC':  # Powerlaw-Clustering
-            G = nx.random_graphs.powerlaw_cluster_graph(n, m, p)
-        elif model == 'WS':
-            G = nx.random_graphs.connected_watts_strogatz_graph(n, k*2, p, tries=200)
-        is_connected = nx.is_connected(G)
-        G.graph['n'] = n
-    return G
-
-def to_DAG(G):
-    """Translate an undirected graph to DAG."""
-    # first, translated to a directed graph,
-    # where one undirected edge is tranformed to two directed edges
-    G = G.to_directed()
-    # then, delete edges whose input node is larger than its output node.
-    removed_edges = [(u,v) for (u,v) in G.edges if u >= v]
-    G.remove_edges_from(removed_edges)
-    assert nx.dag.is_directed_acyclic_graph(G) #
-    return G
-
-
-def niche(s:int, c:int, flip_diag:bool=True):
-    """
-    Niche Model for Food Web
-
-    Args:
-    s: number of species in the community
-    c: the connectance, or fraction of realized links in the food web
-
-    Returns:
-    a weakly connected DAG (Directed Acyclic Graph) for a niche model food web.
-    """
-    weakly_connected = False
-    while not weakly_connected:
-        b = 1 / (2 * c) - 1
-        ni = sorted(np.random.uniform(size = s))
-        ri = np.random.beta(a = 1, b = b, size = s) * ni
-        ci = np.random.uniform(size = s, low = ri / 2, high = np.minimum(ni, 1 - ri / 2))
-        A = np.zeros((s,s))
-        for i in range(s):
-            for j in range(i+1, s): # 1
-                if ni[i] > ci[j] - .5 * ri[j] and ni[i] < ci[j] + .5 * ri[j]:
-                    A[i,j] = 1
-        if flip_diag:
-            A = np.flip(np.rot90(A), axis=1) # rotate 90 degree anti-clockly, then flip along column
-        G=nx.from_numpy_matrix(A, create_using=nx.DiGraph())
-        weakly_connected = nx.is_weakly_connected(G)
-    G.graph['n'] = s
-    G.graph['c'] = c
-    return G  #A,
-
-
-def after_DAG(G, option:str=None):
-    """
-    Add an unique input node and an unique output node for DAG.
-    There are two options to add these two new nodes.
-    First is to connect the new input node to nodes which have zero input degree in the origin DAG,
-    and connect nodes which have zero output degree to the new output node.
-    Second is to connect the new input node to all nodes in the origin DAG,
-    and connect all node in the origin DAG to the new output node.
-    """
-    n = G.graph['n'] # number of nodes
-
-    # find all input nodes and output nodes
-    if option == 'all':
-        in_nodes = out_nodes = range(n)
-    else:
-        in_nodes = [v for v, d in G.in_degree() if d==0]
-        out_nodes = [v for v, d in G.out_degree() if d==0]
-    # number of input nodes, number of output nodes, length of longest path
-    # len(in_nodes), len(out_nodes),
-
-    # add a node with id: -1 as the unique input node
-    in_edges = [(-1,i) for i in in_nodes]
-    G.add_edges_from(in_edges)
-    # add a node with id: n as the unique output node
-    out_edges = [(i, n) for i in out_nodes]
-    G.add_edges_from(out_edges)
-
-    return G
-
-def summary_DAG(G):
-    """
-    Summary information of a DAG. The information reflect structural features of
-    a DAG that may influence on the performance of corresponding neural network.
-
-    Returns:
-    --------
-
-    num_nodes : number of nodes
-    num_edges : number of edges
-    num_real_nodes : number of real nodes, except the unique input and output nodes.
-
-    average clustering : (undirected)
-    transitivity : (undirected)
-    transitivity : (directed)
-
-    in_nodes : list of IDs of all input nodes.
-    num_in_nodes : number of input nodes.
-    out_nodes : list of IDs of all output nodes.
-    num_out_nodes : number of output nodes.
-
-    paths : dict of all paths from the input node to the output node
-    max_length : max length of all path from the input node to the output node
-    num_paths : number of all paths from the input node to the output node
-
-    """
-    num_nodes = G.number_of_nodes()
-    num_edges = G.number_of_edges()
-    num_real_nodes = G.graph['n']
-
-    average_clustering = nx.average_clustering(nx.to_undirected(G))
-    transitivity = nx.transitivity(nx.to_undirected(G))
-    transitivity_directed = nx.transitivity(G)
-
-    # find all input nodes and output nodes
-    in_nodes = [v for v, d in G.in_degree() if d==0]
-    num_in_nodes = len(in_nodes)
-    out_nodes = [v for v, d in G.out_degree() if d==0]
-    num_out_nodes = len(out_nodes)
-
-    paths = max_length = num_paths = None
-
-    #if the unique input node and the unique output node have been added
-    if num_in_nodes == 1 and num_out_nodes == 1 and num_real_nodes != num_nodes:
-        in_nodes = [*G.successors(-1)]
-        num_in_nodes = len(in_nodes)
-        out_nodes = [*G.predecessors(G.graph['n'])]
-        num_out_nodes = len(out_nodes)
-
-        paths = paths_DAG(G)
-        max_length = max(paths.keys())
-        num_paths = sum(paths.values())
-#         paths = nx.all_simple_paths(G, source=-1, target=num_real_nodes)
-#         len_paths = [len(path)-1 for path in paths]
-#         len_paths = np.array(len_paths)
-#         path_lens, path_counts = np.unique(len_paths, return_counts=True)
-#         num_paths = len(len_paths)
-
-    print(' number of nodes :', num_nodes, '\n',
-          'number of edges :', num_edges, '\n',
-          'average node degree : %.4f' % (num_edges/num_nodes), '\n',
-          'number of real nodes :', num_real_nodes, '\n',
-          'average clustering (undirected) : %.4f' % average_clustering, '\n',
-          'transitivity (undirected) : %.4f' % transitivity, '\n',
-          'transitivity (directed) : %.4f' % transitivity_directed, '\n',
-          'input nodes : ', in_nodes, '\n',
-          'number of input nodes :', num_in_nodes, '\n',
-          'output nodes : ', out_nodes, '\n',
-          'number of output nodes :', num_out_nodes, '\n',
-          'all paths :', paths, '\n',
-          'max length of all paths :', max_length, '\n',
-          'number of all paths :', num_paths, '\n')
-
-def to_multiple_partitions(G):
-    """
-    Transform DAGs to Multiple Partitioned Networks.
-
-    Returns:
-    --------
-    llinks : list of links among partitions
-    partitions : number of nodes in all partitions
-    """
-    #first, convert `NetworkX` graph object to `Numpy` matrix order by node IDs
-    A = nx.to_numpy_matrix(G, nodelist=sorted(G.nodes))
-    hcur = 1 # horizontal cursor, initialized as 1
-    vcur = 0 # vertical cursor, initialized as 0
-    n = A.shape[0] # number of nodes
-    llinks = []  # initialize list of links as empty list
-    partitions = []  # initialize number of nodes in partitions
-    while vcur < n:
-        current_nodes = list(range(vcur, hcur)) # current nodes
-        # links to current partition  A[:vcur, current_nodes]
-        links = []
-        for row in range(vcur):
-            for col in current_nodes:
-                if A[row, col] == 1:
-                    links.append((row, col - vcur))
-        if current_nodes != [0]: # if not the start partition
-            llinks.append(links)
-            partitions.append(len(current_nodes))
-
-        # move on vertical cursor
-        vcur += len(current_nodes)
-        # move on horizontal pointer
-        while hcur < n and all(A[vcur:, hcur]==0):
-            hcur += 1
-        #print(vcur, hcur)
-
-    return llinks, partitions
-
-class Partition(nn.Module):
-    """
-    The operation of one partition in the multiple partitioned networks.
-    One partition includes several nodes, which can be executed parallelly.
-
-    Parameters:
-    -----------
-    ni : number of input channels of ONE node.
-    cur_nodes : number of nodes in current partition.
-    links : links from the nodes of all previous partitions to the nodes of current partition.
-    has_groups: does group the nodes?
-    Unit : the operation at the node.
-    kwargs : arguments into `Unit`
-    """
-    def __init__(self, ni:int, cur_nodes:int, links:list, has_groups:bool, Unit:nn.Module, **kwargs):
-        super(Partition, self).__init__()
-        self.ni, self.cur_nodes = ni, cur_nodes
-        self.links = torch.tensor(links)
-        if has_groups:
-            groups = self.cur_nodes
-            kwargs['groups'] = groups # add to `kwargs`
-        self.op = Unit(ni * self.cur_nodes, ni * self.cur_nodes, ni * self.cur_nodes, **kwargs)
-
-    def forward(self, x):
-        # number of channels of input should be `number of nodes in all previous partitions * self.ni`
-        # number of channels of output should be `self.cur_nodes * self.ni`
-        # first construct
-        N,C,H,W = x.size()
-        y = x.new_zeros((N, self.cur_nodes * self.ni, H, W))
-        for i in range(self.links.size(0)):
-            y[:, self.links[i,1] * self.ni : (self.links[i,1]+1) * self.ni, :, :] += \
-            x[:, self.links[i,0] * self.ni : (self.links[i,0]+1) * self.ni, :, :]
-        out = self.op(y)
-        out = torch.cat([x, out], dim=1)
-        return out
-
-class Stage(nn.Module):
-    """
-    The operations along a multiple partitioned network.
-
-    Parameters:
-    -----------
-    G   :  the `NetworkX` 'DiGraph' object, represent a DAG.
-    ni  :  number of input channels of one node for the network
-    no  :  number of output channel of one node for the network
-    Unit : operation at every inner node
-    stride : whether downsample or not, at the end of the network
-    efficient : does using the checkpointing of `Pytorch` to save memory.
-    has_groups: does group the nodes?
-    kwargs : arguments into `Unit`
-
-    """
-    def __init__(self, G:nx.DiGraph, ni:int, no:int, Unit:nn.Module, stride:int=1,
-                 efficient:bool=False, has_groups:bool=True, **kwargs):
-        super(Stage, self).__init__()
-        self.efficient = efficient
-        llinks, partitions = to_multiple_partitions(G)
-        self.llinks, self.partitions = llinks, partitions
-
-        self.nodeops = nn.ModuleList() # ! need improve, to Moduledict !
-        for i, links in enumerate(llinks):
-            if i == len(llinks) - 1:  # reach the end of list
-                n_preds = sum(partitions[:-1]) + 1 # all the previous nodes
-                self.nodeops += [IdentityMapping(n_preds * ni, no, stride=stride)]
-            else:  # inner partition
-                self.nodeops += [Partition(ni, partitions[i], links, has_groups, Unit, **kwargs)]
-
-    def forward(self, x):
-        for nodeop in self.nodeops:
-            if self.efficient:
-                x = cp.checkpoint(nodeop, x)
-            else:
-                x = nodeop(x)
-        return x
+from .graph import *
 
 class NodeOP(nn.Module):
     """
@@ -409,3 +122,123 @@ class ComplexNet(nn.Sequential):
             classifier
         )
         init_cnn(self)
+
+def complexnet_32(Stage:nn.Module, Unit:nn.Module, option:str=None):
+    species = [50,50,50,50]
+    connectance = [0.05]*4
+    Gs = [after_DAG(niche(s, c), option=option) for s,c in zip(species, connectance)]
+    ns = [32]*(4+1)
+    model = ComplexNet(Gs, ns, Stage, Unit, efficient=True)
+    return model
+
+def to_multiple_partitions(G):
+    """
+    Transform DAGs to Multiple Partitioned Networks.
+
+    Returns:
+    --------
+    llinks : list of links among partitions
+    partitions : number of nodes in all partitions
+    """
+    #first, convert `NetworkX` graph object to `Numpy` matrix order by node IDs
+    A = nx.to_numpy_matrix(G, nodelist=sorted(G.nodes))
+    hcur = 1 # horizontal cursor, initialized as 1
+    vcur = 0 # vertical cursor, initialized as 0
+    n = A.shape[0] # number of nodes
+    llinks = []  # initialize list of links as empty list
+    partitions = []  # initialize number of nodes in partitions
+    while vcur < n:
+        current_nodes = list(range(vcur, hcur)) # current nodes
+        # links to current partition  A[:vcur, current_nodes]
+        links = []
+        for row in range(vcur):
+            for col in current_nodes:
+                if A[row, col] == 1:
+                    links.append((row, col - vcur))
+        if current_nodes != [0]: # if not the start partition
+            llinks.append(links)
+            partitions.append(len(current_nodes))
+
+        # move on vertical cursor
+        vcur += len(current_nodes)
+        # move on horizontal pointer
+        while hcur < n and all(A[vcur:, hcur]==0):
+            hcur += 1
+        #print(vcur, hcur)
+
+    return llinks, partitions
+
+class Partition(nn.Module):
+    """
+    The operation of one partition in the multiple partitioned networks.
+    One partition includes several nodes, which can be executed parallelly.
+
+    Parameters:
+    -----------
+    ni : number of input channels of ONE node.
+    cur_nodes : number of nodes in current partition.
+    links : links from the nodes of all previous partitions to the nodes of current partition.
+    has_groups: does group the nodes?
+    Unit : the operation at the node.
+    kwargs : arguments into `Unit`
+    """
+    def __init__(self, ni:int, cur_nodes:int, links:list, has_groups:bool, Unit:nn.Module, **kwargs):
+        super(Partition, self).__init__()
+        self.ni, self.cur_nodes = ni, cur_nodes
+        self.links = torch.tensor(links)
+        if has_groups:
+            groups = self.cur_nodes
+            kwargs['groups'] = groups # add to `kwargs`
+        self.op = Unit(ni * self.cur_nodes, ni * self.cur_nodes, ni * self.cur_nodes, **kwargs)
+
+    def forward(self, x):
+        # number of channels of input should be `number of nodes in all previous partitions * self.ni`
+        # number of channels of output should be `self.cur_nodes * self.ni`
+        # first construct
+        N,C,H,W = x.size()
+        y = x.new_zeros((N, self.cur_nodes * self.ni, H, W))
+        for i in range(self.links.size(0)):
+            y[:, self.links[i,1] * self.ni : (self.links[i,1]+1) * self.ni, :, :] += \
+            x[:, self.links[i,0] * self.ni : (self.links[i,0]+1) * self.ni, :, :]
+        out = self.op(y)
+        out = torch.cat([x, out], dim=1)
+        return out
+
+class Stage(nn.Module):
+    """
+    The operations along a multiple partitioned network.
+
+    Parameters:
+    -----------
+    G   :  the `NetworkX` 'DiGraph' object, represent a DAG.
+    ni  :  number of input channels of one node for the network
+    no  :  number of output channel of one node for the network
+    Unit : operation at every inner node
+    stride : whether downsample or not, at the end of the network
+    efficient : does using the checkpointing of `Pytorch` to save memory.
+    has_groups: does group the nodes?
+    kwargs : arguments into `Unit`
+
+    """
+    def __init__(self, G:nx.DiGraph, ni:int, no:int, Unit:nn.Module, stride:int=1,
+                 efficient:bool=False, has_groups:bool=True, **kwargs):
+        super(Stage, self).__init__()
+        self.efficient = efficient
+        llinks, partitions = to_multiple_partitions(G)
+        self.llinks, self.partitions = llinks, partitions
+
+        self.nodeops = nn.ModuleList() # ! need improve, to Moduledict !
+        for i, links in enumerate(llinks):
+            if i == len(llinks) - 1:  # reach the end of list
+                n_preds = sum(partitions[:-1]) + 1 # all the previous nodes
+                self.nodeops += [IdentityMapping(n_preds * ni, no, stride=stride)]
+            else:  # inner partition
+                self.nodeops += [Partition(ni, partitions[i], links, has_groups, Unit, **kwargs)]
+
+    def forward(self, x):
+        for nodeop in self.nodeops:
+            if self.efficient:
+                x = cp.checkpoint(nodeop, x)
+            else:
+                x = nodeop(x)
+        return x
