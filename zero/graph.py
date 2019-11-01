@@ -7,25 +7,6 @@
 from .imports import *
 from .core import *
 
-# fitness model
-# - n: 节点个数
-# - k: 节点平均度数
-# - p: 节点的fitness参数，与scale-free参数gamma = 1/p + 1
-def sample_fitness(n, k, p):
-    """
-    Generating (directed) random graphs based on fitness model.
-
-    """
-    np.random.seed(seed)
-    G = nx.Graph()
-    nodes = range(n)  # id of nodes, [0, n-1]
-    fitnesses = [math.pow(i+1, -p) for i in nodes]
-    fitnesses_norm = [fitness / sum(fitnesses) for fitness in fitnesses]
-    while G.number_of_edges() < n*k:
-        node1, node2 = np.random.choice(nodes, 2, replace=False, p = fitnesses_norm)
-        G.add_edge(node1, node2)
-    return G
-
 def build_graph(model:str=None, n:int=None, p:float=None, m:int=None, k:int=None):
     """
     Generating undirected random graphs according to several common models
@@ -68,6 +49,49 @@ def to_DAG(G):
     assert nx.dag.is_directed_acyclic_graph(G) #
     return G
 
+
+def sample_fitness(n, k, p, sort:bool=False, reverse:bool=True):
+    """
+    Generating (directed acyclic) random graphs based on fitness model.
+
+    Parameters:
+    -----------
+    n : number of nodes. 节点个数
+    k : average degree of nodes. 节点平均度数
+    p : fitness coeff. of nodes, has such relation with the scale-free coeff. gamma: gamma = 1/p + 1
+    """
+    weakly_connected = False
+    while not weakly_connected:
+        G = nx.DiGraph()
+        nodes = range(n)  # id of nodes, [0, n-1]
+        fitnesses = [math.pow(i+1, -p) for i in nodes]
+        if sort:
+            fitnesses = sorted(fitnesses, reverse=reverse)
+        fitnesses_norm = [fitness / sum(fitnesses) for fitness in fitnesses]
+        while G.number_of_edges() < n*k:
+            node1, node2 = np.random.choice(nodes, 2, replace=False, p = fitnesses_norm)
+            if node1 < node2:
+                G.add_edge(node1, node2)
+            else:
+                G.add_edge(node2, node1)
+        weakly_connected = nx.is_weakly_connected(G)
+
+    G.graph['n'] = n
+    return G
+
+def cascade(s:int, c:float):
+    p = (2 * c * s) / (s - 1)
+    A = np.zeros((s,s))
+    weakly_connected = False
+    while not weakly_connected:
+        for i in range(s-1):
+            A[i,(i+1):] = np.random.binomial(size=s-i-1, n=1, p=p)
+        G=nx.from_numpy_matrix(A, create_using=nx.DiGraph())
+        weakly_connected = nx.is_weakly_connected(G)
+
+    G.graph['n'] = s
+    G.graph['c'] = c
+    return G
 
 def niche(s:int, c:int, flip_diag:bool=True):
     """
