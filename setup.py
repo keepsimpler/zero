@@ -24,7 +24,7 @@ VERSION = '0.1.0'
 
 # What packages are required for this module to be executed?
 REQUIRED = [
-    'torch', 'pytorch-lightning', 'fastai', 'networkx',
+    'torch', 'fastai', 'networkx',  # 'pytorch-lightning', 
 ]
 
 # What packages are optional?
