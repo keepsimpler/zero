@@ -274,7 +274,7 @@ class FiveStage(nn.Module):
         return x4 if i//8 == 0 or i//8 == 6 else x3 if i//8 == 1 or i//8 == 5 else x2 if i//8 == 2 or i//8 == 4 else x1 if i//8 == 3 else x5 # if i//8 == 7
 
 def folded_resnet(Stem, Stage, Unit, ni:int=32, num_stages:int=4, num_units:int=6, exp:int=2,
-                  bottle_scale:int=1, first_downsample:bool=True, c_in:int=3, c_out:int=10):
+                  bottle_scale:int=1, first_downsample:bool=True, c_in:int=3, c_out:int=10, **kwargs):
     """
     A folded residual network.
 
@@ -301,4 +301,4 @@ def folded_resnet(Stem, Stage, Unit, ni:int=32, num_stages:int=4, num_units:int=
     return ResNet(nhs = nhs, nos = nos,
                   nus = nus, strides = strides, Stem = Stem, Stage = Stage,
                   Unit = Unit,
-                  c_in=c_in, c_out=c_out)
+                  c_in=c_in, c_out=c_out, **kwargs)
