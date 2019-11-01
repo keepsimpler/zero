@@ -123,14 +123,6 @@ class ComplexNet(nn.Sequential):
         )
         init_cnn(self)
 
-def complexnet_32(Stage:nn.Module, Unit:nn.Module, option:str=None):
-    species = [50,50,50,50]
-    connectance = [0.05]*4
-    Gs = [after_DAG(niche(s, c), option=option) for s,c in zip(species, connectance)]
-    ns = [32]*(4+1)
-    model = ComplexNet(Gs, ns, Stage, Unit, efficient=True)
-    return model
-
 def to_multiple_partitions(G):
     """
     Transform DAGs to Multiple Partitioned Networks.
