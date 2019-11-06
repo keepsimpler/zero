@@ -7,6 +7,54 @@
 from .imports import *
 from .core import *
 
+class PartialResStage(nn.Module):
+    """
+    Stage in a residual network, usually the units in a residual network are divided into
+    stages according to feature (image) resolution.
+
+    Parameters:
+    -----------
+    ni : number of input channels of the stage, 本stage的入channel数
+    no : number of output channels of the stage, 本stage的出channel数
+    nh : number of hidden channels of basic units in the stage, 内部channel数
+    nu : number of basic units in the stage, unit数
+    stride : stride size of conv op in First unit
+    Unit : class of the basic unit, Unit class has calling format:
+        Unit(ni:int, no:int, nh:int, stride:int=1, **kwargs)
+
+    """
+    def __init__(self, ni:int, no:int, nh:int, nu:int, stride:int, Unit:nn.Module,
+                 a:int=1, **kwargs):
+        super(PartialResStage, self).__init__()
+        assert a < nu - 3
+        self.a, self.nu = a, nu
+        print(self.a, self.nu)
+        # the first unit, stride size determine if downsample or not
+        self.unit0 = Unit(ni, no, nh, stride=stride, **kwargs)
+        self.idmapping0 = IdentityMapping(ni, no, stride=stride)
+        units = []
+        for i in range(nu - 1):
+            units += [Unit(no, no, nh, stride=1, **kwargs)] #resnet_bottleneck
+        self.units = nn.ModuleList(units)
+
+    def forward(self, x):
+        x_next = self.unit0(x) + self.idmapping0(x)
+        x_pre = torch.zeros_like(x_next)
+        x_sum = torch.zeros_like(x_next)
+        for i, unit in enumerate(self.units):
+            x_sum += x_next
+            if i < self.a:
+                x = x_next + x_pre
+                x_pre = x
+            elif i < self.nu - 2:
+                x = x_next + x_pre
+            else:
+                x = x_next + x_sum
+            x_next = unit(x)
+
+        return x_next
+
+
 class ResStage(nn.Module):
     """
     Stage in a residual network, usually the units in a residual network are divided into
