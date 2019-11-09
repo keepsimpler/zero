@@ -26,7 +26,7 @@ class PartialResStage(nn.Module):
     def __init__(self, ni:int, no:int, nh:int, nu:int, stride:int, Unit:nn.Module,
                  a:int=1, **kwargs):
         super(PartialResStage, self).__init__()
-        assert a < nu - 3
+        assert a < nu - 2
         self.a, self.nu = a, nu
         print(self.a, self.nu)
         # the first unit, stride size determine if downsample or not
@@ -163,11 +163,11 @@ class DualStage(nn.Module):
         x1 = self.unit0(x) + self.idmapping0(x)
         x2 = self.unit1(x1) + x1
         for i, unit in enumerate(self.units):
-            if i//2 == 0:
+            if i%2 == 0:
                 x1 = unit(x2) + x1
-            elif i//2 == 1:
+            elif i%2 == 1:
                 x2 = unit(x1) + x2
-        return x2 if i//2 == 1 else x1
+        return x2 if i%2 == 1 else x1
 
 
 class TripleStage(nn.Module):
@@ -204,15 +204,15 @@ class TripleStage(nn.Module):
         x2 = self.unit1(x1) + x1
         x3 = self.unit2(x2) + x2
         for i, unit in enumerate(self.units):
-            if i//4 == 0:
+            if i%4 == 0:
                 x2 = unit(x3) + x2
-            elif i//4 == 1:
+            elif i%4 == 1:
                 x1 = unit(x2) + x1
-            elif i//4 == 2:
+            elif i%4 == 2:
                 x2 = unit(x2) + x2
-            elif i//4 == 3:
+            elif i%4 == 3:
                 x3 = unit(x2) + x3
-        return x2 if i//4 == 0 else x1 if i//4 == 1 else x2 if i//4 == 2 else x3 #if i//4 == 3
+        return x2 if i%4 == 0 else x1 if i%4 == 1 else x2 if i%4 == 2 else x3 #if i%4 == 3
 
 
 class QuadStage(nn.Module):
@@ -251,19 +251,19 @@ class QuadStage(nn.Module):
         x3 = self.unit2(x2) + x2
         x4 = self.unit3(x3) + x3
         for i, unit in enumerate(self.units):
-            if i // 6 == 0:
+            if i % 6 == 0:
                 x3 = unit(x4) + x3
-            elif i // 6 == 1:
+            elif i % 6 == 1:
                 x2 = unit(x3) + x2
-            elif i // 6 == 2:
+            elif i % 6 == 2:
                 x1 = unit(x2) + x1
-            elif i // 6 == 3:
+            elif i % 6 == 3:
                 x2 = unit(x1) + x2
-            elif i // 6 == 4:
+            elif i % 6 == 4:
                 x3 = unit(x2) + x3
-            elif i // 6 == 5:
+            elif i % 6 == 5:
                 x4 = unit(x3) + x4
-        return x3 if i//6 == 0 or i//6 ==4 else x2 if i//6 == 1 or i//6 == 3 else x1 if i//6 == 2 else x4 # if i//6 == 5
+        return x3 if i%6 == 0 or i%6 ==4 else x2 if i%6 == 1 or i%6 == 3 else x1 if i%6 == 2 else x4 # if i%6 == 5
 
 class FiveStage(nn.Module):
     """
@@ -303,23 +303,23 @@ class FiveStage(nn.Module):
         x4 = self.unit3(x3) + x3
         x5 = self.unit4(x4) + x4
         for i, unit in enumerate(self.units):
-            if i // 8 == 0:
+            if i % 8 == 0:
                 x4 = unit(x5) + x4
-            elif i // 8 == 1:
+            elif i % 8 == 1:
                 x3 = unit(x4) + x3
-            elif i // 8 == 2:
+            elif i % 8 == 2:
                 x2 = unit(x3) + x2
-            elif i // 8 == 3:
+            elif i % 8 == 3:
                 x1 = unit(x2) + x1
-            elif i // 8 == 4:
+            elif i % 8 == 4:
                 x2 = unit(x1) + x2
-            elif i // 8 == 5:
+            elif i % 8 == 5:
                 x3 = unit(x2) + x3
-            elif i // 8 == 6:
+            elif i % 8 == 6:
                 x4 = unit(x3) + x4
-            elif i // 8 == 7:
+            elif i % 8 == 7:
                 x5 = unit(x4) + x5
-        return x4 if i//8 == 0 or i//8 == 6 else x3 if i//8 == 1 or i//8 == 5 else x2 if i//8 == 2 or i//8 == 4 else x1 if i//8 == 3 else x5 # if i//8 == 7
+        return x4 if i%8 == 0 or i%8 == 6 else x3 if i%8 == 1 or i%8 == 5 else x2 if i%8 == 2 or i%8 == 4 else x1 if i%8 == 3 else x5 # if i%8 == 7
 
 def folded_resnet(Stem, Stage, Unit, ni:int=32, num_stages:int=4, num_units:int=6, exp:int=2,
                   bottle_scale:int=1, first_downsample:bool=True, c_in:int=3, c_out:int=10, **kwargs):
