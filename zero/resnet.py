@@ -209,7 +209,7 @@ class TripleStage(nn.Module):
             elif i%4 == 1:
                 x1 = unit(x2) + x1
             elif i%4 == 2:
-                x2 = unit(x2) + x2
+                x2 = unit(x1) + x2
             elif i%4 == 3:
                 x3 = unit(x2) + x3
         return x2 if i%4 == 0 else x1 if i%4 == 1 else x2 if i%4 == 2 else x3 #if i%4 == 3
