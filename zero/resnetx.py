@@ -131,7 +131,7 @@ class ResNet5(nn.Module):
                 x4 = unit(x3) + idmapping(x4)
             elif i % 8 == 7:
                 x5 = unit(x4) + idmapping(x5)
-        x = x3 if i%8==0 or i%8==6 else x3 if i%8==1 or i%8==5 else x2 if i%8==2 or i%8==4 else x1 if i%8==3 else x5
+        x = x4 if i%8==0 or i%8==6 else x3 if i%8==1 or i%8==5 else x2 if i%8==2 or i%8==4 else x1 if i%8==3 else x5
 
         x = self.classifier(x)
         return x
@@ -293,7 +293,7 @@ class ResNet3(nn.Module):
                 x2 = unit(x1) + idmapping(x2)
             elif i % 4 == 3:
                 x3 = unit(x2) + idmapping(x3)
-        x = x2 if i % 4 == 0 or i % 4 == 2 else x1 if i % 4 == 0 else x3
+        x = x2 if i % 4 == 0 or i % 4 == 2 else x1 if i % 4 == 1 else x3
         x = self.classifier(x)
         return x
 
