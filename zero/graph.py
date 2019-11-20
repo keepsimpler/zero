@@ -153,6 +153,35 @@ def after_DAG(G, option:str=None):
 
     return G
 
+def paths_DAG(G):
+    """
+    All paths from the unique input node to the unique output node.
+    The DAG is first transformed to a matrix, then the number of paths
+    with length `i` can be calculated as an element of `i` power of the matrix.
+
+    Returns:
+    --------
+
+    """
+    n = nx.number_of_nodes(G) # get node number
+
+    # first, tranform to matrix, nodes are sorted by their IDs
+    mat = nx.to_numpy_matrix(G, nodelist=sorted(G.nodes()))
+
+    start = True
+    paths = OrderedDict() # key: the length of paths, value: the number of paths with particular length
+    for i in range(1, n):
+        mat_power = matrix_power(mat,i)
+        num_paths = int(mat_power[0,-1]) # number of paths with length `i` from the input node to the output node
+        if num_paths != 0 and start: # paths with the least length
+            start = False
+            paths[i] = num_paths
+        elif num_paths == 0 and not start: # after the longest length
+            break
+        else:
+            paths[i] = num_paths
+    return paths
+
 def summary_DAG(G):
     """
     Summary information of a DAG. The information reflect structural features of
